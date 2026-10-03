@@ -136,7 +136,7 @@ function SidebarRail({ onExpand }: { onExpand: () => void }) {
     <div className="flex h-full w-[60px] flex-col items-center gap-1 py-2.5">
       <IconButton label="Expand sidebar" tooltipSide="right" onClick={onExpand} className="group mb-2 size-10">
         <span className="group-hover:hidden">
-          <LogoMark size={22} />
+          <LogoMark size={26} />
         </span>
         <PanelLeft className="hidden group-hover:block" />
       </IconButton>

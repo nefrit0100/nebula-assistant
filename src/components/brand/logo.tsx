@@ -1,27 +1,30 @@
+import Image from "next/image"
+import mark from "@/assets/brand/nebula-mark.png"
 import { cn } from "@/lib/cn"
 
 /**
- * The Nebula mark: a disk with a mist "bite" and a single forming star.
- * Built from three circles so it stays crisp from 16px up.
+ * The Nebula mark: a ringed planet and a forming star. The artwork is wider than
+ * it is tall, so it sits centred in a square box. Decorative: whatever it sits
+ * next to (the wordmark, a label) names it.
  */
 export function LogoMark({ size = 24, className }: { size?: number; className?: string }) {
   return (
-    <svg
+    <Image
+      src={mark}
+      alt=""
+      aria-hidden="true"
       width={size}
       height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden="true"
-      className={cn("shrink-0", className)}
-    >
-      <circle cx="16" cy="16" r="14" fill="var(--fg)" />
-      <circle cx="21.5" cy="10.5" r="8" fill="var(--mist)" />
-      <circle cx="21.5" cy="10.5" r="2.4" fill="var(--fg)" />
-    </svg>
+      // A 128px file covers every size the UI uses; skip the resizing service.
+      unoptimized
+      loading="eager"
+      draggable={false}
+      className={cn("shrink-0 select-none", className)}
+    />
   )
 }
 
-export function Logo({ className, size = 22, wordmark = true }: { className?: string; size?: number; wordmark?: boolean }) {
+export function Logo({ className, size = 28, wordmark = true }: { className?: string; size?: number; wordmark?: boolean }) {
   return (
     <span className={cn("inline-flex items-center gap-2 text-fg", className)}>
       <LogoMark size={size} />

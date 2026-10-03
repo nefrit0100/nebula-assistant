@@ -14,6 +14,7 @@ import {
   ThumbsUp,
 } from "lucide-react"
 import { memo, useEffect, useRef, useState } from "react"
+import { LogoMark } from "@/components/brand/logo"
 import { Button } from "@/components/ui/button"
 import { IconButton } from "@/components/ui/icon-button"
 import {
@@ -398,12 +399,8 @@ function replyFileName(content: string): string {
 
 function ThinkingIndicator({ label }: { label: string }) {
   return (
-    <div role="status" className="flex items-center gap-2.5 py-1 text-md text-fg-subtle">
-      <svg viewBox="0 0 32 32" className="size-[18px]" aria-hidden="true">
-        <circle cx="16" cy="16" r="14" fill="var(--fg)" />
-        <circle cx="21.5" cy="10.5" r="8" fill="var(--mist)" />
-        <circle cx="21.5" cy="10.5" r="2.4" fill="var(--fg)" className="origin-[21.5px_10.5px] animate-[breathe_1.1s_ease-in-out_infinite]" />
-      </svg>
+    <div role="status" className="flex items-center gap-2 py-1 text-md text-fg-subtle">
+      <LogoMark size={22} className="animate-[mark-pulse_1.6s_ease-in-out_infinite]" />
       <span>{label}…</span>
     </div>
   )
