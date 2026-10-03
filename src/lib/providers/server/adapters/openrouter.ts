@@ -26,7 +26,9 @@ function toPricing(pricing: OpenRouterModel["pricing"]): ModelInfo["pricing"] {
   const output = Number(pricing?.completion)
   if (!pricing || !Number.isFinite(input) || !Number.isFinite(output) || input < 0 || output < 0) return undefined
   const perMillion = (perToken: number) => Number((perToken * 1_000_000).toPrecision(6))
-  return { input: perMillion(input), output: perMillion(output) }
+  return input === 0 && output === 0
+    ? { input: 0, output: 0, notes: ["OpenRouter rate-limits free models."] }
+    : { input: perMillion(input), output: perMillion(output) }
 }
 
 /** OpenRouter's public catalog carries real metadata, so nothing here is inferred. */

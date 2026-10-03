@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn"
 import { formatTokens } from "@/lib/dates"
 import { CATALOG_VERIFIED_ON } from "@/lib/providers/catalog"
 import { PROVIDER_LIST, PROVIDERS } from "@/lib/providers/registry"
-import type { ModelInfo, ModelRef, ProviderId } from "@/lib/providers/types"
+import type { ModelInfo, ModelPricing, ModelRef, ProviderId } from "@/lib/providers/types"
 import { useActions, useWorkspaceState } from "@/lib/workspace/context"
 
 type FilterKey = "free" | "vision" | "reasoning" | "tools"
@@ -320,23 +320,21 @@ function ModelDetail({ model }: { model: ModelInfo | null }) {
   const facts: { label: string; value: React.ReactNode; wide?: boolean }[] = []
   const context = formatTokens(model.contextWindow)
   const maxOutput = formatTokens(model.maxOutput)
+  const pricing = model.pricing
   if (context) facts.push({ label: "Context window", value: `${context} tokens` })
   if (maxOutput) facts.push({ label: "Max output", value: `${maxOutput} tokens` })
-  if (model.pricing && isFree(model)) {
-    facts.push({
-      label: "Price",
-      wide: true,
-      value: (
-        <span className="flex items-center gap-2">
-          <FreeBadge />
-          <span className="text-sm font-normal text-fg-muted">Rate limits apply</span>
-        </span>
-      ),
-    })
-  } else if (model.pricing) {
+  if (pricing && isFree(model)) {
+    facts.push({ label: "Price", wide: true, value: <FreeBadge /> })
+  } else if (pricing) {
+    const price = (perMillion: number) => (
+      <>
+        {pricing.from && <span className="font-normal text-fg-muted">from </span>}
+        {formatPrice(perMillion, pricing.currency)}
+      </>
+    )
     facts.push(
-      { label: "Input per 1M", value: formatPrice(model.pricing.input) },
-      { label: "Output per 1M", value: formatPrice(model.pricing.output) },
+      { label: "Input per 1M", value: price(pricing.input) },
+      { label: "Output per 1M", value: price(pricing.output) },
     )
   }
   const capabilities = [
@@ -344,8 +342,14 @@ function ModelDetail({ model }: { model: ModelInfo | null }) {
     { key: "reasoning", label: "Reasoning", detail: "Thinks before answering", icon: Brain, value: model.capabilities.reasoning },
     { key: "tools", label: "Tool use", detail: "Supports function calling", icon: Wrench, value: model.capabilities.tools },
   ].filter((capability) => capability.value)
-  const known = facts.length > 0 || capabilities.length > 0
   const providerName = PROVIDERS[model.provider].name
+  // Prices from a published list are credited separately from the model's other details.
+  const detailsKnown = context || maxOutput || capabilities.length > 0 || (pricing && !pricing.listed)
+  const detailsSource = !detailsKnown
+    ? null
+    : model.source === "provider"
+      ? `Details reported by ${providerName}.`
+      : `Details from the provider's documentation, verified ${CATALOG_VERIFIED_ON}.`
 
   return (
     <div className="flex w-[268px] shrink-0 flex-col overflow-y-auto p-5" aria-live="polite">
@@ -363,6 +367,11 @@ function ModelDetail({ model }: { model: ModelInfo | null }) {
           ))}
         </dl>
       )}
+      {pricing?.notes?.map((note) => (
+        <p key={note} className="mt-2 text-xs leading-relaxed text-fg-muted">
+          {note}
+        </p>
+      ))}
 
       {capabilities.length > 0 && (
         <ul className="mt-5 flex flex-col gap-2.5">
@@ -379,11 +388,23 @@ function ModelDetail({ model }: { model: ModelInfo | null }) {
       )}
 
       <p className="mt-auto pt-5 text-xs leading-relaxed text-fg-subtle">
-        {!known
-          ? "This provider doesn't publish details for this model."
-          : model.source === "provider"
-            ? `Details reported by ${providerName}.`
-            : `Details from the provider's documentation, verified ${CATALOG_VERIFIED_ON}.`}
+        {detailsSource}
+        {pricing?.listed && (
+          <>
+            {detailsSource && " "}
+            Prices from {providerName}’s{" "}
+            <a
+              href={pricing.listed.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-line-strong underline-offset-2 hover:text-fg"
+            >
+              pricing page
+            </a>
+            , checked {pricing.listed.checkedOn}.
+          </>
+        )}
+        {!detailsSource && !pricing?.listed && "This provider doesn't publish details for this model."}
       </p>
     </div>
   )
@@ -433,16 +454,16 @@ function matches(model: ModelInfo, providerName: string, terms: string[]) {
   return terms.every((term) => haystack.includes(term))
 }
 
-const usd = (min: number, max: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: min, maximumFractionDigits: max })
-const USD = { whole: usd(0, 0), cents: usd(2, 2), fine: usd(2, 3) }
-
-/** $15 · $2.50 · $0.075 · < $0.01 */
-function formatPrice(perMillion: number) {
+/** $15 · $2.50 · $0.075 · ¥0.8 → ¥0.80 · < $0.01 */
+function formatPrice(perMillion: number, currency: ModelPricing["currency"] = "USD") {
+  const symbol = currency === "CNY" ? "¥" : "$"
   if (perMillion === 0) return "Free"
-  if (perMillion < 0.01) return "< $0.01"
-  if (perMillion < 1) return USD.fine.format(perMillion)
-  return Number.isInteger(perMillion) ? USD.whole.format(perMillion) : USD.cents.format(perMillion)
+  if (perMillion < 0.01) return `< ${symbol}0.01`
+  const whole = Number.isInteger(perMillion)
+  return (
+    symbol +
+    perMillion.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 3 })
+  )
 }
 
 function keyOf(model: { provider: string; model?: string; id?: string }) {

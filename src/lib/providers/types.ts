@@ -26,6 +26,20 @@ export type ModelCapabilities = {
   tools?: boolean
 }
 
+/** Per million tokens. Only set when the provider publishes the figure. */
+export type ModelPricing = {
+  input: number
+  output: number
+  /** Defaults to USD. */
+  currency?: "USD" | "CNY"
+  /** The lowest of several rates: longer prompts, thinking mode or peak hours cost more. */
+  from?: boolean
+  /** Short sentences shown with the price, e.g. when a higher rate applies. */
+  notes?: string[]
+  /** Set when the figure comes from the provider's published price list rather than its API. */
+  listed?: { url: string; checkedOn: string }
+}
+
 export type ModelInfo = {
   id: string
   provider: ProviderId
@@ -33,8 +47,7 @@ export type ModelInfo = {
   contextWindow?: number
   maxOutput?: number
   capabilities: ModelCapabilities
-  /** USD per million tokens, only when the provider publishes a fixed price. */
-  pricing?: { input: number; output: number }
+  pricing?: ModelPricing
   /** Where the metadata came from — the UI only shows details it can attribute. */
   source: "catalog" | "provider"
   featured?: boolean

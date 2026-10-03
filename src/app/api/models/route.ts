@@ -1,5 +1,6 @@
 import { getAdapter, ProviderError } from "@/lib/providers/server"
 import { toApiError } from "@/lib/providers/errors"
+import { withListedPrice } from "@/lib/providers/pricing"
 import { isProviderId, type ProviderModels } from "@/lib/providers/types"
 import { authenticate, json, jsonError, rateLimit } from "@/lib/server/api"
 import { listConnectedProviders, loadProviderContext } from "@/lib/server/credentials"
@@ -23,7 +24,8 @@ export async function GET(request: Request) {
       try {
         const context = await loadProviderContext(supabase, viewer.id, provider)
         const listing = await getAdapter(provider).listModels(context)
-        return { provider, models: listing.models, partial: listing.partial, error: null }
+        const models = listing.models.map((model) => withListedPrice(model, context.options))
+        return { provider, models, partial: listing.partial, error: null }
       } catch (error) {
         const code = error instanceof ProviderError ? error.code : "unknown"
         return { provider, models: [], partial: true, error: toApiError(code) }

@@ -59,20 +59,29 @@ const ANTHROPIC: CatalogEntry[] = [
 ]
 
 const DEEPSEEK: CatalogEntry[] = [
-  // https://api-docs.deepseek.com/news/news260424/
+  // https://api-docs.deepseek.com/quick_start/pricing (2026-10-03)
   {
     id: "deepseek-v4-pro",
     name: "DeepSeek V4 Pro",
     contextWindow: 1_000_000,
-    capabilities: { reasoning: true },
+    maxOutput: 384_000,
+    capabilities: { vision: false, reasoning: true, tools: true },
     featured: true,
   },
+  {
+    id: "deepseek-flash",
+    name: "DeepSeek V4.1 Flash",
+    contextWindow: 1_000_000,
+    maxOutput: 384_000,
+    capabilities: { vision: true, reasoning: true, tools: true },
+    featured: true,
+  },
+  // Legacy name, still accepted and served by DeepSeek-V4.1-Flash.
   {
     id: "deepseek-v4-flash",
     name: "DeepSeek V4 Flash",
     contextWindow: 1_000_000,
     capabilities: { reasoning: true },
-    featured: true,
   },
 ]
 
@@ -123,14 +132,20 @@ export function findCatalogEntry(modelId: string): CatalogEntry | undefined {
   return undefined
 }
 
-/** Turns an id like "qwen3.6-plus" or "gpt-5.4-mini" into a readable label. */
+/** Brand spellings that capitalizing the first letter gets wrong. */
+const BRANDS: Record<string, string> = { deepseek: "DeepSeek", minimax: "MiniMax", longcat: "LongCat" }
+
+/** Turns an id like "qwen3.6-plus", "gpt-5.4-mini" or "claude-sonnet-4-5" into a readable label. */
 export function humanizeModelId(id: string): string {
   const base = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id
   return base
+    // Dashed versions read as decimals ("sonnet-4-5" → "4.5"); dates and long numbers are left alone.
+    .replace(/(^|-)(\d)-(\d{1,2})(?=-|$)/g, "$1$2.$3")
     .split(/[-_]/)
     .filter(Boolean)
     .map((part) => {
       const lower = part.toLowerCase()
+      if (Object.hasOwn(BRANDS, lower)) return BRANDS[lower]
       if (/^(gpt|glm|qwq|vl|ai|api)$/.test(lower)) return lower.toUpperCase()
       if (/^\d/.test(part)) return part
       return part.charAt(0).toUpperCase() + part.slice(1)
