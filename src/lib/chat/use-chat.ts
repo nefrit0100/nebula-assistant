@@ -6,6 +6,7 @@ import { toApiError, type ApiErrorPayload } from "@/lib/providers/errors"
 import type { ModelRef } from "@/lib/providers/types"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useActions } from "@/lib/workspace/context"
+import { getLiveRun, mergeLiveRun, publishLiveRun, subscribeLiveRun, type LiveRun } from "./live-runs"
 import { ChatRequestError, streamChatRequest } from "./stream-client"
 import {
   MESSAGE_COLUMNS,
@@ -48,9 +49,18 @@ type Action =
   | { type: "loadingEarlier"; value: boolean }
   | { type: "clearError" }
   | { type: "reset"; messages: ChatMessage[]; hasEarlier: boolean }
+  | { type: "sync"; run: LiveRun }
 
 function reducer(state: ChatState, action: Action): ChatState {
   switch (action.type) {
+    case "sync":
+      // A turn started by an earlier visit to this conversation, followed through the registry.
+      return {
+        ...state,
+        conversationId: action.run.conversationId,
+        messages: mergeLiveRun(state.messages, action.run),
+        status: action.run.done ? "idle" : "streaming",
+      }
     case "begin":
       return { ...state, messages: action.messages, status: "submitting", requestError: null }
     case "started":
@@ -152,14 +162,18 @@ type UseChatOptions = {
 
 export function useChat(options: UseChatOptions) {
   const actions = useActions()
-  const [state, dispatch] = useReducer(reducer, null, () => ({
-    conversationId: options.conversationId,
-    messages: options.initialMessages,
-    status: "idle" as Status,
-    hasEarlier: options.hasEarlier,
-    loadingEarlier: false,
-    requestError: null,
-  }))
+  const [state, dispatch] = useReducer(reducer, null, (): ChatState => {
+    // Coming back to a conversation whose reply is still streaming: start from where it is.
+    const live = getLiveRun(options.conversationId)
+    return {
+      conversationId: options.conversationId,
+      messages: live ? mergeLiveRun(options.initialMessages, live) : options.initialMessages,
+      status: live && !live.done ? "streaming" : "idle",
+      hasEarlier: options.hasEarlier,
+      loadingEarlier: false,
+      requestError: null,
+    }
+  })
 
   // Latest values for the stable callbacks below; synced after every commit.
   const stateRef = useRef(state)
@@ -169,6 +183,8 @@ export function useChat(options: UseChatOptions) {
     optionsRef.current = options
   })
   const abortRef = useRef<AbortController | null>(null)
+  /** The registry token of the turn this screen is running itself, whose updates it already has. */
+  const ownTurnRef = useRef<string | null>(null)
 
   // A server refresh (e.g. after a background reply finished) brings new messages.
   const initialRef = useRef(options.initialMessages)
@@ -176,17 +192,43 @@ export function useChat(options: UseChatOptions) {
     if (initialRef.current === options.initialMessages) return
     initialRef.current = options.initialMessages
     if (stateRef.current.status === "idle") {
-      dispatch({ type: "reset", messages: options.initialMessages, hasEarlier: options.hasEarlier })
+      const live = getLiveRun(stateRef.current.conversationId)
+      const messages = live ? mergeLiveRun(options.initialMessages, live) : options.initialMessages
+      dispatch({ type: "reset", messages, hasEarlier: options.hasEarlier })
     }
   }, [options.initialMessages, options.hasEarlier])
+
+  // Follow turns this screen didn't start: a reply that began before the user left
+  // this chat and came back keeps streaming in here.
+  useEffect(() => {
+    const id = state.conversationId
+    if (!id) return
+    const sync = () => {
+      const live = getLiveRun(id)
+      if (live && live.token !== ownTurnRef.current) dispatch({ type: "sync", run: live })
+    }
+    const unsubscribe = subscribeLiveRun(id, sync)
+    // Catch anything published between the first render and now.
+    sync()
+    return unsubscribe
+  }, [state.conversationId])
 
   const run = useCallback(
     async (
       body: ChatRequestBody,
-      context: { snapshot: ChatMessage[]; placeholderId: string; tempUserId: string | null; draft?: { content: string; attachments: Attachment[] } },
+      context: {
+        snapshot: ChatMessage[]
+        placeholderId: string
+        tempUserId: string | null
+        /** The reply as it starts: an empty placeholder, or the message being continued. */
+        base: ChatMessage
+        draft?: { content: string; attachments: Attachment[] }
+      },
     ) => {
       const controller = new AbortController()
       abortRef.current = controller
+      const token = crypto.randomUUID()
+      ownTurnRef.current = token
       let assistantId = context.placeholderId
       let started = false
       let settled = false
@@ -195,11 +237,25 @@ export function useChat(options: UseChatOptions) {
       let frame = 0
       let timer = 0
 
+      // Mirrors this turn into the registry, so a screen opened later can follow it.
+      let live: LiveRun | null = null
+      const publish = (update: (run: LiveRun) => Partial<LiveRun>) => {
+        if (!live) return
+        live = { ...live, ...update(live) }
+        // Clear the "streaming" flag first, so a following screen never flashes the waiting note.
+        if (live.done) actions.setStreaming(null)
+        publishLiveRun(live)
+      }
+
       const flush = () => {
         frame = 0
         timer = 0
         if (!pending.text && !pending.reasoning) return
-        dispatch({ type: "append", id: assistantId, ...pending })
+        const { text, reasoning } = pending
+        dispatch({ type: "append", id: assistantId, text, reasoning })
+        publish((run) => ({
+          assistant: { ...run.assistant, content: run.assistant.content + text, reasoning: run.assistant.reasoning + reasoning },
+        }))
         pending = { text: "", reasoning: "" }
       }
       // One render per frame, and fewer once a reply is long, so huge replies keep the page responsive.
@@ -232,6 +288,15 @@ export function useChat(options: UseChatOptions) {
               assistantId: event.assistantMessageId,
             })
             assistantId = event.assistantMessageId
+            live = {
+              conversationId: event.conversationId,
+              token,
+              user: event.userMessage,
+              assistant: { ...context.base, id: event.assistantMessageId, status: "streaming" },
+              done: false,
+              stop: () => controller.abort(),
+            }
+            publishLiveRun(live)
             actions.setStreaming(event.conversationId)
             const now = new Date().toISOString()
             if (event.createdConversation) {
@@ -261,12 +326,18 @@ export function useChat(options: UseChatOptions) {
             flush()
             settled = true
             dispatch({ type: "replace", id: assistantId, message: event.message })
+            publish(() => ({ assistant: event.message, done: true }))
           } else if (event.type === "error") {
             cancelScheduled()
             flush()
             settled = true
+            const failure = event.error
             if (event.message) dispatch({ type: "replace", id: assistantId, message: event.message })
-            else dispatch({ type: "fail", id: assistantId, error: event.error })
+            else dispatch({ type: "fail", id: assistantId, error: failure })
+            publish((run) => ({
+              assistant: event.message ?? { ...run.assistant, status: "failed", error: failure },
+              done: true,
+            }))
           }
         }
       } catch (error) {
@@ -280,14 +351,21 @@ export function useChat(options: UseChatOptions) {
           if (context.draft) optionsRef.current.onRestoreDraft?.(context.draft.content, context.draft.attachments)
         } else {
           settled = true
-          dispatch({
-            type: "fail",
-            id: assistantId,
-            error: error instanceof ChatRequestError ? error.payload : toApiError("network_error"),
-          })
+          const failure = error instanceof ChatRequestError ? error.payload : toApiError("network_error")
+          dispatch({ type: "fail", id: assistantId, error: failure })
+          publish((run) => ({ assistant: { ...run.assistant, status: "failed", error: failure }, done: true }))
         }
       } finally {
-        if (!settled) dispatch({ type: "settle", id: assistantId, cancelled: controller.signal.aborted })
+        if (!settled) {
+          const cancelled = controller.signal.aborted
+          dispatch({ type: "settle", id: assistantId, cancelled })
+          publish((run) => ({
+            assistant: cancelled
+              ? { ...run.assistant, status: "cancelled", finishReason: "cancelled" }
+              : { ...run.assistant, status: "failed", error: toApiError("network_error") },
+            done: true,
+          }))
+        }
         if (abortRef.current === controller) abortRef.current = null
         actions.setStreaming(null)
       }
@@ -316,7 +394,7 @@ export function useChat(options: UseChatOptions) {
           content,
           attachments,
         },
-        { snapshot, placeholderId: placeholder.id, tempUserId: user.id, draft: { content, attachments } },
+        { snapshot, placeholderId: placeholder.id, tempUserId: user.id, base: placeholder, draft: { content, attachments } },
       )
       return true
     },
@@ -335,7 +413,7 @@ export function useChat(options: UseChatOptions) {
       dispatch({ type: "begin", messages: [...keep, placeholder] })
       void run(
         { conversationId, provider: model.provider, model: model.model, action: "regenerate", targetMessageId: messageId },
-        { snapshot: messages, placeholderId: placeholder.id, tempUserId: null },
+        { snapshot: messages, placeholderId: placeholder.id, tempUserId: null, base: placeholder },
       )
     },
     [run],
@@ -360,7 +438,7 @@ export function useChat(options: UseChatOptions) {
           targetMessageId: messageId,
           content: content.trim(),
         },
-        { snapshot: messages, placeholderId: placeholder.id, tempUserId: user.id },
+        { snapshot: messages, placeholderId: placeholder.id, tempUserId: user.id, base: placeholder },
       )
     },
     [run],
@@ -370,22 +448,23 @@ export function useChat(options: UseChatOptions) {
     (messageId: string) => {
       const model = optionsRef.current.getModel()
       const { messages, conversationId } = stateRef.current
-      if (!model || !conversationId) return
-      dispatch({
-        type: "begin",
-        messages: messages.map((message) =>
-          message.id === messageId ? { ...message, status: "streaming", error: null, finishReason: null } : message,
-        ),
-      })
+      const target = messages.find((message) => message.id === messageId)
+      if (!model || !conversationId || !target) return
+      const resumed: ChatMessage = { ...target, status: "streaming", error: null, finishReason: null }
+      dispatch({ type: "begin", messages: messages.map((message) => (message.id === messageId ? resumed : message)) })
       void run(
         { conversationId, provider: model.provider, model: model.model, action: "continue", targetMessageId: messageId },
-        { snapshot: messages, placeholderId: messageId, tempUserId: null },
+        { snapshot: messages, placeholderId: messageId, tempUserId: null, base: resumed },
       )
     },
     [run],
   )
 
-  const stop = useCallback(() => abortRef.current?.abort(), [])
+  // A turn followed from an earlier visit is stopped through the registry.
+  const stop = useCallback(() => {
+    if (abortRef.current) abortRef.current.abort()
+    else getLiveRun(stateRef.current.conversationId)?.stop()
+  }, [])
 
   const loadEarlier = useCallback(async () => {
     const { messages, conversationId, loadingEarlier } = stateRef.current
