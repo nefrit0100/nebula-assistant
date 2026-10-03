@@ -33,6 +33,8 @@ export type ModelInfo = {
   contextWindow?: number
   maxOutput?: number
   capabilities: ModelCapabilities
+  /** USD per million tokens, only when the provider publishes a fixed price. */
+  pricing?: { input: number; output: number }
   /** Where the metadata came from — the UI only shows details it can attribute. */
   source: "catalog" | "provider"
   featured?: boolean

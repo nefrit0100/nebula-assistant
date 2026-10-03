@@ -62,7 +62,7 @@ export function ModelSelector({ selected, selectedInfo, connected, onSelect, dis
   )
 
   const body = (
-    <Suspense fallback={<div className={desktop ? "h-[440px]" : "h-[50dvh]"} aria-hidden="true" />}>
+    <Suspense fallback={<div className="flex-1" aria-hidden="true" />}>
       <SelectorBody
         selected={selected}
         connected={connected}
@@ -85,7 +85,9 @@ export function ModelSelector({ selected, selectedInfo, connected, onSelect, dis
             align="start"
             sideOffset={8}
             collisionPadding={12}
-            className="z-50 w-[min(640px,calc(100vw-24px))] overflow-hidden rounded-xl border border-line bg-surface shadow-pop outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
+            // A definite height is what lets the list scroll. Radix picks the roomier side for the
+            // full 520px first; the max-height then caps it to the space it measured there.
+            className="z-50 flex h-[520px] max-h-(--radix-popover-content-available-height) w-[min(680px,calc(100vw-24px))] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-pop outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
           >
             {body}
           </PopoverPrimitive.Content>
@@ -101,7 +103,12 @@ export function ModelSelector({ selected, selectedInfo, connected, onSelect, dis
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[82dvh] flex-col overflow-hidden rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-pop outline-none data-[state=closed]:animate-sheet-out data-[state=open]:animate-sheet-in"
+          // Don't pop the on-screen keyboard over the list; search is one tap away.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            ;(event.currentTarget as HTMLElement).focus()
+          }}
+          className="fixed inset-x-0 bottom-0 z-50 flex h-[min(85dvh,720px)] flex-col overflow-hidden rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-pop outline-none data-[state=closed]:animate-sheet-out data-[state=open]:animate-sheet-in"
         >
           <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-line-strong" aria-hidden="true" />
           <DialogPrimitive.Title className="px-4 pb-1 pt-3 text-md font-semibold">Choose a model</DialogPrimitive.Title>

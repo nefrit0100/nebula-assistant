@@ -17,11 +17,21 @@ type OpenRouterModel = {
   architecture?: { input_modalities?: string[]; output_modalities?: string[] }
   top_provider?: { max_completion_tokens?: number | null }
   supported_parameters?: string[]
+  /** USD per token, as decimal strings; "-1" marks variable pricing (routers). */
+  pricing?: { prompt?: string; completion?: string }
+}
+
+function toPricing(pricing: OpenRouterModel["pricing"]): ModelInfo["pricing"] {
+  const input = Number(pricing?.prompt)
+  const output = Number(pricing?.completion)
+  if (!pricing || !Number.isFinite(input) || !Number.isFinite(output) || input < 0 || output < 0) return undefined
+  const perMillion = (perToken: number) => Number((perToken * 1_000_000).toPrecision(6))
+  return { input: perMillion(input), output: perMillion(output) }
 }
 
 /** OpenRouter's public catalog carries real metadata, so nothing here is inferred. */
 async function fetchCatalog(): Promise<ModelInfo[]> {
-  return cachedPublic("openrouter:models", async () => {
+  return cachedPublic("openrouter:models:v2", async () => {
     const response = await fetch(`${BASE_URL}/models`, { signal: AbortSignal.timeout(15_000) })
     if (!response.ok) throw await providerErrorFromResponse(response)
     const json = (await response.json()) as { data?: OpenRouterModel[] }
@@ -30,10 +40,16 @@ async function fetchCatalog(): Promise<ModelInfo[]> {
       .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))
       .map<ModelInfo>((model) => {
         const params = model.supported_parameters ?? []
+        const pricing = toPricing(model.pricing)
+        const free = pricing?.input === 0 && pricing.output === 0
+        // "Vendor: Name (free)" → "Name"; the vendor is in the id and "free" becomes a badge.
+        let name = model.name?.replace(/^[^:]+:\s*/, "") || model.id
+        if (free) name = name.replace(/\s*\(free\)\s*$/i, "") || name
         return {
           id: model.id,
           provider: "openrouter",
-          name: model.name?.replace(/^[^:]+:\s*/, "") || model.id,
+          name,
+          pricing,
           contextWindow: model.context_length ?? undefined,
           maxOutput: model.top_provider?.max_completion_tokens ?? undefined,
           capabilities: {
