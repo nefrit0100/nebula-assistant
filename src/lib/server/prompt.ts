@@ -11,6 +11,21 @@ type PromptInput = {
   now?: Date
 }
 
+/** The interface renders these blocks as downloadable file cards (src/lib/chat/files.ts). */
+const FILES_SECTION = [
+  "## Files",
+  "When the main deliverable is long content the user will save or reuse, such as a complete code file (roughly 40 lines or more), a long document or article, or a prompt, deliver it as a file instead of in the message body:",
+  "",
+  '<file name="landing-page.html">',
+  "…the complete content…",
+  "</file>",
+  "",
+  "- Put the opening and closing tags on their own lines, and give the file a short, descriptive name with the right extension: .md for documents, articles and prompts; the language's usual extension for code.",
+  "- Inside the block, write only the file's raw content, without wrapping it in a code fence.",
+  "- Use one block per file, and keep the text around it brief: what the file contains and how to use it.",
+  "- Short snippets, explanations and ordinary answers stay in the message as usual.",
+].join("\n")
+
 /**
  * Assembles the system prompt. Stable content comes first and the date last,
  * so providers with prefix caching can reuse the shared prefix across turns.
@@ -23,6 +38,8 @@ export function buildSystemPrompt(input: PromptInput): string {
       "Be accurate. If you are unsure or lack information, say so instead of guessing.",
     ].join("\n"),
   ]
+
+  sections.push(FILES_SECTION)
 
   sections.push(`## Response style\n${responseStyleFor(input.responseStyle).instruction}`)
 

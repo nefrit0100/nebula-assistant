@@ -447,7 +447,8 @@
   counter-increment: line;
   content: counter(line);
   display: inline-block;
-  width: 2.2ch;
+  /* Long files set --gutter from their line count so four-digit numbers fit. */
+  width: var(--gutter, 2.2ch);
   margin-right: 1.4ch;
   text-align: right;
   color: var(--fg-faint);

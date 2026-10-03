@@ -28,6 +28,7 @@ A free, open-source AI assistant where you bring your own API keys. Connect Open
 | Auth | Email and password (with confirmation and password reset), Google OAuth, protected routes, session refresh in `proxy.ts` |
 | Chat | Streaming replies, stop, regenerate, continue, edit-and-resend, copy, feedback, reasoning display, text-file attachments |
 | Rendering | GitHub-flavored Markdown, tables, KaTeX math (loaded on demand), Shiki code highlighting (loaded per language), line numbers, wrap toggle, copy |
+| Files | Long deliverables (whole code files, documents, prompts) arrive as file cards with copy, download and a full viewer; HTML and Markdown files get a live preview. Models are asked to use `<file name="…">` blocks, and long code blocks or bare HTML documents become files even when they don't. Any reply can be downloaded as Markdown |
 | Organization | Conversation history grouped by date, rename, delete, move to project, full-text search (`Ctrl/⌘ K`) |
 | Projects | Group conversations with shared instructions that are sent with every chat in the project |
 | Models | Searchable model picker per provider, live model discovery, capability details with their source |
@@ -195,6 +196,7 @@ Put it behind a reverse proxy with response buffering disabled for `/api/chat` (
 - **SSRF protection.** Provider endpoints are fixed per provider; the one user-supplied endpoint (Alibaba workspaces) must be an `https://*.aliyuncs.com/compatible-mode/v1` URL.
 - **Rate limiting.** Chat, credential and model-listing endpoints use a per-user, database-backed limiter that only accepts the app's own bucket names.
 - **Open redirects** are blocked: post-auth `next` parameters must be same-site relative paths.
+- **HTML previews are sandboxed.** Generated pages render in `/preview`, framed without `allow-same-origin`, so they run in an opaque origin with no access to Nebula's cookies, storage or DOM. That page alone has a permissive CSP (so a page's CDN assets load) and can only be framed by Nebula; every other route keeps the strict policy and `X-Frame-Options: DENY`.
 
 The schema's RLS policies were verified by attempting cross-user reads, writes, spoofed `user_id`s and foreign project references; all were rejected.
 

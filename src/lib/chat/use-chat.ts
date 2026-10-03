@@ -191,16 +191,32 @@ export function useChat(options: UseChatOptions) {
       let started = false
       let settled = false
       let pending = { text: "", reasoning: "" }
+      let streamed = 0
       let frame = 0
+      let timer = 0
 
       const flush = () => {
         frame = 0
+        timer = 0
         if (!pending.text && !pending.reasoning) return
         dispatch({ type: "append", id: assistantId, ...pending })
         pending = { text: "", reasoning: "" }
       }
+      // One render per frame, and fewer once a reply is long, so huge replies keep the page responsive.
       const schedule = () => {
-        if (!frame) frame = requestAnimationFrame(flush)
+        if (frame || timer) return
+        if (streamed > 24_000) {
+          timer = window.setTimeout(() => {
+            timer = 0
+            frame = requestAnimationFrame(flush)
+          }, 80)
+        } else {
+          frame = requestAnimationFrame(flush)
+        }
+      }
+      const cancelScheduled = () => {
+        cancelAnimationFrame(frame)
+        clearTimeout(timer)
       }
 
       try {
@@ -234,17 +250,19 @@ export function useChat(options: UseChatOptions) {
             }
           } else if (event.type === "text") {
             pending.text += event.delta
+            streamed += event.delta.length
             schedule()
           } else if (event.type === "reasoning") {
             pending.reasoning += event.delta
+            streamed += event.delta.length
             schedule()
           } else if (event.type === "done") {
-            cancelAnimationFrame(frame)
+            cancelScheduled()
             flush()
             settled = true
             dispatch({ type: "replace", id: assistantId, message: event.message })
           } else if (event.type === "error") {
-            cancelAnimationFrame(frame)
+            cancelScheduled()
             flush()
             settled = true
             if (event.message) dispatch({ type: "replace", id: assistantId, message: event.message })
@@ -252,7 +270,7 @@ export function useChat(options: UseChatOptions) {
           }
         }
       } catch (error) {
-        cancelAnimationFrame(frame)
+        cancelScheduled()
         flush()
         if (controller.signal.aborted) {
           // The server notices the disconnect and stores the partial reply as stopped.

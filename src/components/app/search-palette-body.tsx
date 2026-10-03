@@ -17,6 +17,7 @@ const NO_RESULTS: Result[] = []
 /** Snippets come from raw Markdown; strip the syntax so they read as text. */
 function cleanSnippet(text: string): string {
   return text
+    .replace(/<\/?file\b[^>]*>/gi, " ")
     .replace(/```[a-z]*|`/gi, "")
     .replace(/\|?\s*:?-{3,}:?\s*\|?/g, " ")
     .replace(/[|#>*_~]+/g, " ")

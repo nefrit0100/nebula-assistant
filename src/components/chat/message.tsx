@@ -4,6 +4,7 @@ import {
   Check,
   ChevronRight,
   Copy,
+  FileDown,
   FileText,
   MoreHorizontal,
   Pencil,
@@ -12,7 +13,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react"
-import { lazy, memo, Suspense, useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { IconButton } from "@/components/ui/icon-button"
 import {
@@ -24,17 +25,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/menu"
 import { cn } from "@/lib/cn"
+import { downloadText, toPortableMarkdown } from "@/lib/chat/files"
 import { isLocalMessage } from "@/lib/chat/use-chat"
 import type { ChatMessage } from "@/lib/chat/types"
 import { useCopy } from "@/lib/hooks"
 import { ErrorNotice } from "./error-notice"
+import { MessageBody } from "./message-body"
 
-/**
- * The Markdown pipeline (~40 KB gzipped) loads only when a reply is shown, and
- * is preloaded at idle by ChatView so the first reply never waits for it.
- */
-export const loadMarkdown = () => import("./markdown")
-const Markdown = lazy(() => loadMarkdown().then((module) => ({ default: module.Markdown })))
+export { loadMarkdown } from "./message-body"
 
 export type MessageHandlers = {
   onRegenerate: (id: string) => void
@@ -218,20 +216,16 @@ function AssistantMessage({ message, isLast, busy, showReasoning, modelName, onR
   const local = isLocalMessage(message)
   const incomplete = message.status === "cancelled" || message.finishReason === "length"
   const hasContent = message.content.trim().length > 0
+  const reasoningShown = showReasoning && message.reasoning.trim().length > 0
 
   return (
     <article aria-label="Nebula's reply" aria-busy={streaming || undefined} className="group/msg relative animate-message-in">
-      {showReasoning && message.reasoning.trim() && (
-        <Reasoning text={message.reasoning} active={streaming && !hasContent} />
-      )}
+      {reasoningShown && <Reasoning text={message.reasoning} active={streaming && !hasContent} />}
 
       {hasContent ? (
-        <div className={cn("prose-nebula", streaming && "is-streaming")}>
-          <Suspense fallback={<p className="whitespace-pre-wrap">{message.content}</p>}>
-            <Markdown content={message.content} streaming={streaming} />
-          </Suspense>
-        </div>
-      ) : streaming ? (
+        <MessageBody content={message.content} streaming={streaming} />
+      ) : streaming && !reasoningShown ? (
+        // The reasoning disclosure already says "Thinking…" while it streams.
         <ThinkingIndicator label={message.reasoning ? "Reasoning" : "Thinking"} />
       ) : null}
 
@@ -287,6 +281,8 @@ function AssistantActions({
 }) {
   const { copied, copy } = useCopy()
   const usage = message.servedModel ? `Answered by ${message.servedModel}` : null
+  // File blocks become titled code fences, so copies and downloads read well anywhere.
+  const portable = () => toPortableMarkdown(message.content)
 
   return (
     <div
@@ -297,7 +293,7 @@ function AssistantActions({
           "pointer-fine:absolute pointer-fine:left-0 pointer-fine:top-full pointer-fine:mt-0.5 pointer-fine:opacity-0 pointer-fine:group-hover/msg:opacity-100 pointer-fine:focus-within:opacity-100",
       )}
     >
-      <IconButton size="sm" label={copied ? "Copied" : "Copy reply"} onClick={() => copy(message.content)}>
+      <IconButton size="sm" label={copied ? "Copied" : "Copy reply"} onClick={() => copy(portable())}>
         {copied ? <Check className="text-success" /> : <Copy />}
       </IconButton>
       <IconButton size="sm" label="Regenerate" disabled={busy} onClick={() => onRegenerate(message.id)} className="pointer-coarse:hidden">
@@ -348,8 +344,14 @@ function AssistantActions({
               Continue generating
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem icon={<Copy />} onSelect={() => copy(toPlainText(message.content))}>
+          <DropdownMenuItem icon={<Copy />} onSelect={() => copy(toPlainText(portable()))}>
             Copy as plain text
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            icon={<FileDown />}
+            onSelect={() => downloadText(replyFileName(message.content), portable(), "text/markdown")}
+          >
+            Download as Markdown
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="leading-snug">
@@ -369,11 +371,29 @@ function Reasoning({ text, active }: { text: string; active: boolean }) {
         <ChevronRight className="size-4 transition-transform duration-150 group-open/reasoning:rotate-90" aria-hidden="true" />
         <span className={cn(active && "animate-pulse")}>{active ? "Thinking…" : "Thought process"}</span>
       </summary>
-      <div className="ml-2 mt-1 max-h-80 overflow-y-auto border-l-2 border-line pl-4 text-md leading-relaxed whitespace-pre-wrap text-fg-muted">
-        {text.trim()}
-      </div>
+      {/* Reasoning can run to 100k+ characters; only render it while someone is reading it. */}
+      {open && (
+        <div className="ml-2 mt-1 max-h-80 overflow-y-auto border-l-2 border-line pl-4 text-md leading-relaxed whitespace-pre-wrap text-fg-muted">
+          {text.trim()}
+        </div>
+      )}
     </details>
   )
+}
+
+/** "Here's a landing page for…" → "heres-a-landing-page-for.md" */
+function replyFileName(content: string): string {
+  const firstLine =
+    toPlainText(toPortableMarkdown(content))
+      .split("\n")
+      .find((line) => line.trim()) ?? ""
+  const slug = firstLine
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48)
+    .replace(/-+$/, "")
+  return `${slug || "reply"}.md`
 }
 
 function ThinkingIndicator({ label }: { label: string }) {

@@ -23,6 +23,20 @@ const csp = [
   "object-src 'none'",
 ].join("; ")
 
+/**
+ * The HTML file preview (src/app/preview/route.ts) only ever runs inside an iframe
+ * sandboxed without allow-same-origin, so it can't reach Nebula's session. It may
+ * therefore load anything a generated page needs, but only Nebula may frame it.
+ */
+const previewCsp = [
+  "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'",
+  "frame-ancestors 'self'",
+  "object-src 'none'",
+].join("; ")
+
+const permissionsPolicy = "camera=(), microphone=(), geolocation=(), payment=()"
+const hsts = isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
+
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: pkg.version,
@@ -31,14 +45,25 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        // Everything except the preview page, which gets its own policy below.
+        source: "/:path((?!preview$).*)",
         headers: [
           { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
-          ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]),
+          { key: "Permissions-Policy", value: permissionsPolicy },
+          ...hsts,
+        ],
+      },
+      {
+        source: "/preview",
+        headers: [
+          { key: "Content-Security-Policy", value: previewCsp },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Permissions-Policy", value: permissionsPolicy },
+          ...hsts,
         ],
       },
     ]
