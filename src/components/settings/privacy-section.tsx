@@ -63,7 +63,9 @@ export function PrivacySection() {
       link.href = url
       link.download = `nebula-export-${new Date().toISOString().slice(0, 10)}.json`
       link.click()
-      URL.revokeObjectURL(url)
+      // Revoking right away can cancel the download in some browsers.
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+      toast.success("Export ready", { description: `Saved as ${link.download}` })
     } catch {
       toast.error("Couldn't export your data", { description: "Check your connection and try again." })
     } finally {

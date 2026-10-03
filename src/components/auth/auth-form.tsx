@@ -3,12 +3,13 @@
 import { MailCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Field, Input } from "@/components/ui/field"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { safeNextPath } from "@/lib/urls"
 import { describeAuthError } from "./auth-errors"
+import { Captcha, captchaEnabled, type CaptchaHandle } from "./captcha"
 import { GoogleIcon } from "./google-icon"
 import { PasswordInput } from "./password-input"
 import { useFormError } from "./use-form-error"
@@ -36,9 +37,12 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
   const form = useFormError<"email" | "password">(initialError ?? null)
   const [needsConfirmation, setNeedsConfirmation] = useState(false)
   const [resent, setResent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<CaptchaHandle>(null)
 
   const isSignup = mode === "signup"
   const callbackUrl = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`
+  const needsCaptcha = () => captchaEnabled && !captchaToken
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -46,6 +50,7 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return form.fail("Enter a valid email address.", "email")
     if (!password) return form.fail("Enter your password.", "password")
     if (isSignup && password.length < 8) return form.fail("Use at least 8 characters for your password.", "password")
+    if (needsCaptcha()) return form.fail("Complete the verification check first.")
     setPending("email")
     try {
       const supabase = await getSupabaseBrowserClient()
@@ -53,7 +58,7 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { emailRedirectTo: callbackUrl() },
+          options: { emailRedirectTo: callbackUrl(), captchaToken: captchaToken ?? undefined },
         })
         if (signUpError) throw signUpError
         // An existing, confirmed address comes back with no identities (no error, to prevent enumeration).
@@ -66,7 +71,11 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
           return
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+          options: { captchaToken: captchaToken ?? undefined },
+        })
         if (signInError) throw signInError
       }
       router.replace(destination)
@@ -75,6 +84,8 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
       form.fail(describeAuthError(caught as Error))
     } finally {
       setPending(null)
+      // Tokens are single-use; the next attempt needs a fresh one.
+      captchaRef.current?.reset()
     }
   }
 
@@ -97,17 +108,20 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
 
   async function resendConfirmation() {
     form.clear()
+    if (needsCaptcha()) return form.fail("Complete the verification check first.")
     try {
       const supabase = await getSupabaseBrowserClient()
       const { error: resendError } = await supabase.auth.resend({
         type: "signup",
         email: email.trim(),
-        options: { emailRedirectTo: callbackUrl() },
+        options: { emailRedirectTo: callbackUrl(), captchaToken: captchaToken ?? undefined },
       })
       if (resendError) throw resendError
       setResent(true)
     } catch (caught) {
       form.fail(describeAuthError(caught as Error))
+    } finally {
+      captchaRef.current?.reset()
     }
   }
 
@@ -126,6 +140,11 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
           <p role="alert" className="mt-4 text-sm text-danger">
             {form.message}
           </p>
+        )}
+        {captchaEnabled && !resent && (
+          <div className="mt-6 w-full">
+            <Captcha ref={captchaRef} onToken={setCaptchaToken} />
+          </div>
         )}
         <div className="mt-6 flex flex-wrap gap-2">
           <Button variant="secondary" onClick={resendConfirmation} disabled={resent}>
@@ -214,6 +233,8 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
             </Link>
           )}
         </div>
+
+        <Captcha ref={captchaRef} onToken={setCaptchaToken} />
 
         {form.message && (
           <p id={form.messageId} role="alert" className="rounded-md bg-danger-soft px-3 py-2.5 text-sm text-danger">

@@ -5,7 +5,8 @@ import { ResetPasswordForm } from "@/components/auth/reset-password-form"
 import { getViewer } from "@/lib/server/auth"
 import { getAuthSettings } from "@/lib/server/auth-settings"
 
-export const metadata: Metadata = { title: "Choose a new password" }
+// Reached only from a one-time recovery link: keep it out of search results.
+export const metadata: Metadata = { title: "Choose a new password", robots: { index: false, follow: false } }
 
 /** Reached from a recovery link, which signs the user in first. */
 export default async function ResetPasswordPage() {

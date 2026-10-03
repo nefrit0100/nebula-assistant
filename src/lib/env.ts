@@ -19,6 +19,8 @@ export const publicEnv = {
   ),
   siteUrl: (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, ""),
   repoUrl: normalizeRepoUrl(process.env.NEXT_PUBLIC_REPO_URL),
+  /** Cloudflare Turnstile site key; when set, auth forms send a CAPTCHA token Supabase verifies. */
+  turnstileSiteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || null,
 } as const
 
 function normalizeRepoUrl(value: string | undefined): string | null {

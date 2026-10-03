@@ -2,11 +2,12 @@
 
 import { MailCheck } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Field, Input } from "@/components/ui/field"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { describeAuthError } from "./auth-errors"
+import { Captcha, captchaEnabled, type CaptchaHandle } from "./captcha"
 import { useFormError } from "./use-form-error"
 
 export function ForgotPasswordForm() {
@@ -14,16 +15,20 @@ export function ForgotPasswordForm() {
   const [pending, setPending] = useState(false)
   const form = useFormError<"email">()
   const [sent, setSent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<CaptchaHandle>(null)
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
     form.clear()
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return form.fail("Enter a valid email address.", "email")
+    if (captchaEnabled && !captchaToken) return form.fail("Complete the verification check first.")
     setPending(true)
     try {
       const supabase = await getSupabaseBrowserClient()
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        captchaToken: captchaToken ?? undefined,
       })
       if (resetError) throw resetError
       setSent(true)
@@ -31,6 +36,7 @@ export function ForgotPasswordForm() {
       form.fail(describeAuthError(caught as Error))
     } finally {
       setPending(false)
+      captchaRef.current?.reset()
     }
   }
 
@@ -75,6 +81,7 @@ export function ForgotPasswordForm() {
             />
           )}
         </Field>
+        <Captcha ref={captchaRef} onToken={setCaptchaToken} />
         {form.message && (
           <p id={form.messageId} role="alert" className="rounded-md bg-danger-soft px-3 py-2.5 text-sm text-danger">
             {form.message}

@@ -99,8 +99,9 @@ Useful scripts:
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Your project URL, from Supabase → Project Settings → API. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public | Yes | The publishable key (`sb_publishable_…`) or legacy anon key. Safe in the browser because every table enforces RLS. |
-| `NEXT_PUBLIC_SITE_URL` | Public | Yes | The deployment's canonical origin, e.g. `https://nebula.example.com`. Used for metadata. |
+| `NEXT_PUBLIC_SITE_URL` | Public | Yes | The deployment's canonical origin, e.g. `https://nebula.example.com`. Used for metadata; an `https://` origin also turns on Secure cookies, HTTPS redirects and `upgrade-insecure-requests`. |
 | `NEXT_PUBLIC_REPO_URL` | Public | No | Your public repository URL. Open-source links appear only when this is set. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Public | No | Cloudflare Turnstile site key for bot protection on sign-in, sign-up and password reset. See [Bot protection](#bot-protection). |
 | `NEBULA_ENCRYPTION_KEY` | Server only | Yes | 32 random bytes, base64. Encrypts provider keys at rest. |
 
 Generate an encryption key:
@@ -134,6 +135,17 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
    3. Paste the client ID and secret into Supabase and enable the provider.
 
    The "Continue with Google" button appears automatically once the provider is enabled — Nebula reads the project's public auth settings and never shows a sign-in option that won't work.
+7. **Rate limits.** Sign-in, sign-up and email requests go straight from the browser to Supabase Auth, which rate-limits them per IP. Review the limits in Authentication → Rate Limits before launch.
+
+### Bot protection
+
+Optional, and recommended for public deployments. Supabase verifies the CAPTCHA token server-side, so it also stops bots that call the auth API directly.
+
+1. Create a widget at [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile) for your domain.
+2. In Supabase → Authentication → Bot and Abuse Protection, enable CAPTCHA protection, choose Turnstile and paste the **secret** key.
+3. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` to the **site** key and rebuild (the key and the CSP that allows Turnstile are baked in at build time).
+
+Enable both halves together: with only the Supabase setting on, sign-in fails for everyone; with only the site key set, the check isn't enforced.
 
 ## Providers
 
@@ -191,6 +203,12 @@ Put it behind a reverse proxy with response buffering disabled for `/api/chat` (
 - **Identity** is always derived from the verified session (`supabase.auth.getClaims()`), never from a client-supplied id.
 - **Row-level security** is enabled on every table with owner-only policies. Child rows reference their parent through composite `(id, user_id)` foreign keys, so a row can't be attached to another user's conversation or project even with forged ids.
 - **The anon role** has no table privileges at all.
+- **Column-level write grants.** Signed-in users may only write the columns the app itself writes. Ids, ownership, message roles, ordering and timestamps come from defaults, identities and triggers and can't be changed through the Data API, even on one's own rows. (Because the server acts as the user rather than with a service key, fields the server legitimately updates, such as a reply's text on Continue, remain writable by their owner.)
+- **Input validation.** API routes validate every body with zod, and the database enforces length and format checks on every user-editable column, including writes the browser makes directly. Attachments must be text: size and count are capped and binary content is refused on both sides.
+- **Output escaping.** Markdown is rendered without raw HTML, links get `rel="noopener noreferrer"`, and KaTeX runs untrusted. The only injected HTML is the code highlighter's escaped output.
+- **Sessions and transport.** Session cookies are `SameSite=Lax` and, on HTTPS deployments, `Secure`. They can't be `HttpOnly` because the browser client reads the session. HTTPS deployments also redirect plain-HTTP requests, send HSTS and `upgrade-insecure-requests`, and every page sends a CSP, `X-Frame-Options: DENY`, `nosniff`, a referrer policy, a permissions policy and `Cross-Origin-Opener-Policy: same-origin`.
+- **Passwords and bot protection.** Supabase Auth hashes passwords (bcrypt) and rate-limits sign-in; [Turnstile](#bot-protection) can be added for CAPTCHA protection.
+- **Dependencies.** `npm run audit:prod` audits what ships (currently clean), and `.github/dependabot.yml` keeps dependencies updated once the repository is on GitHub. The only advisories are in ESLint's toolchain (`braces`, no patched release yet), which never runs in production.
 - **Provider keys** are encrypted in the application with AES-256-GCM. The additional authenticated data binds each ciphertext to its user and provider, so a ciphertext copied elsewhere fails to decrypt. Clients hold no `SELECT` grant on the ciphertext column; the server reads it through a `SECURITY DEFINER` function that only returns the caller's own row.
 - **Secrets never leave the server.** Provider error messages are redacted before they reach the browser; keys never appear in URLs, logs or responses.
 - **SSRF protection.** Provider endpoints are fixed per provider; the one user-supplied endpoint (Alibaba workspaces) must be an `https://*.aliyuncs.com/compatible-mode/v1` URL.

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { publicEnv } from "@/lib/env"
+import { SESSION_COOKIE_OPTIONS } from "./cookies"
 
 const PROTECTED_PREFIXES = ["/app", "/settings"]
 const AUTH_ENTRY_PATHS = ["/", "/login", "/signup"]
@@ -14,9 +15,19 @@ const AUTH_ENTRY_PATHS = ["/", "/login", "/signup"]
  * only line of defense.
  */
 export async function updateSession(request: NextRequest) {
+  // Behind a TLS-terminating host, a plain-HTTP request means someone typed or
+  // followed an http:// link: send them to HTTPS before anything else.
+  if (publicEnv.siteUrl.startsWith("https://") && request.headers.get("x-forwarded-proto") === "http") {
+    const secure = request.nextUrl.clone()
+    secure.protocol = "https:"
+    secure.port = ""
+    return NextResponse.redirect(secure, 308)
+  }
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(publicEnv.supabaseUrl, publicEnv.supabaseKey, {
+    cookieOptions: SESSION_COOKIE_OPTIONS,
     cookies: {
       getAll() {
         return request.cookies.getAll()

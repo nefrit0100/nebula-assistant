@@ -3,6 +3,9 @@ import pkg from "./package.json"
 
 const isDev = process.env.NODE_ENV !== "production"
 const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin : ""
+const servedOverHttps = (process.env.NEXT_PUBLIC_SITE_URL ?? "").startsWith("https://")
+// Cloudflare Turnstile (optional bot check on the auth forms) loads a script and an iframe.
+const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? " https://challenges.cloudflare.com" : ""
 
 /**
  * Content Security Policy. The browser only talks to this origin and Supabase
@@ -11,16 +14,18 @@ const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.en
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${turnstile}`,
   "style-src 'self' 'unsafe-inline'",
   // Profile photos come from the identity provider's CDN.
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}`.trim(),
+  `frame-src 'self'${turnstile}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  ...(servedOverHttps ? ["upgrade-insecure-requests"] : []),
 ].join("; ")
 
 /**
@@ -53,6 +58,8 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Permissions-Policy", value: permissionsPolicy },
+          // Pages opened from Nebula (or that open it) can't reach back into its window.
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           ...hsts,
         ],
       },

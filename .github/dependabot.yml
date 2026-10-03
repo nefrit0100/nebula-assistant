@@ -1,0 +1,16 @@
+# Weekly dependency updates and security alerts once the repository is on GitHub.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Framework packages move together; one PR is easier to test.
+      next:
+        patterns: ["next", "eslint-config-next", "@next/*"]
+      supabase:
+        patterns: ["@supabase/*"]
+      radix:
+        patterns: ["@radix-ui/*"]

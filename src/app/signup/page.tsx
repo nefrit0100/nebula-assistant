@@ -6,7 +6,10 @@ import { getViewer } from "@/lib/server/auth"
 import { getAuthSettings } from "@/lib/server/auth-settings"
 import { safeNextPath } from "@/lib/urls"
 
-export const metadata: Metadata = { title: "Create your account" }
+export const metadata: Metadata = {
+  title: "Create your account",
+  description: "Create a free Nebula account and chat with the AI models you bring: OpenAI, Anthropic, DeepSeek, OpenRouter and more.",
+}
 
 export default async function SignupPage(props: PageProps<"/signup">) {
   const searchParams = await props.searchParams

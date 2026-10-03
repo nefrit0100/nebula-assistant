@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { publicEnv } from "@/lib/env"
+import { SESSION_COOKIE_OPTIONS } from "./cookies"
 import type { Database } from "./database.types"
 
 let clientPromise: Promise<SupabaseClient<Database>> | null = null
@@ -13,7 +14,8 @@ let clientPromise: Promise<SupabaseClient<Database>> | null = null
  */
 export function getSupabaseBrowserClient(): Promise<SupabaseClient<Database>> {
   clientPromise ??= import("@supabase/ssr").then(
-    ({ createBrowserClient }) => createBrowserClient<Database>(publicEnv.supabaseUrl, publicEnv.supabaseKey),
+    ({ createBrowserClient }) =>
+      createBrowserClient<Database>(publicEnv.supabaseUrl, publicEnv.supabaseKey, { cookieOptions: SESSION_COOKIE_OPTIONS }),
     (error: unknown) => {
       // A failed chunk load (offline, a deploy mid-session) shouldn't stick: retry on the next call.
       clientPromise = null

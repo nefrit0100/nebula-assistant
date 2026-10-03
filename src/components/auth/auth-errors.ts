@@ -30,7 +30,11 @@ export function describeAuthError(error: AuthError | Error | null | undefined): 
       return "This link has expired. Request a new one."
     case "validation_failed":
       return "Check the email address and try again."
+    case "captcha_failed":
+      return "The verification check didn't pass. Complete it again and retry."
   }
+
+  if (/captcha/i.test(message)) return "The verification check didn't pass. Complete it again and retry."
 
   if (/fetch|network/i.test(message)) return "Can't reach the server. Check your connection and try again."
   if (/invalid login credentials/i.test(message)) return "That email and password don't match. Check them and try again."

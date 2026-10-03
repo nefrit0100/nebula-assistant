@@ -31,7 +31,11 @@ const AttachmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
   type: z.string().max(100),
   size: z.number().int().nonnegative().max(LIMITS.attachmentBytes),
-  text: z.string().max(LIMITS.attachmentBytes),
+  // Text files only (the composer checks too): binary content is refused here as well.
+  text: z
+    .string()
+    .max(LIMITS.attachmentBytes)
+    .refine((text) => !text.includes("\u0000"), "Binary files aren't supported"),
 })
 
 const BodySchema = z.object({
