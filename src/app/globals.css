@@ -16,11 +16,13 @@
   --mist-strong: #c8eefb;
   --fg: #13262e;
   --fg-muted: #4f646d;
-  --fg-subtle: #7a8d95;
+  --fg-subtle: #5b6b72;
   --fg-faint: #a9b8be;
   --fg-inverse: #ffffff;
   --line: #e3ecef;
   --line-strong: #cfdce1;
+  /* Form-control borders: ≥3:1 against bg and canvas (WCAG 1.4.11). */
+  --line-control: #80939b;
   --accent: #0a6f8f;
   --accent-fg: #ffffff;
   --hover: rgb(19 38 46 / 0.045);
@@ -36,6 +38,9 @@
   --shadow-raise: 0 1px 2px rgb(19 38 46 / 0.04), 0 8px 24px -12px rgb(19 38 46 / 0.14);
   --scrim: rgb(19 38 46 / 0.28);
   --code-bg: #f7fafb;
+  /* Sign-in pages: the form column's background, and artwork on the right in dark themes only. */
+  --auth-form-bg: var(--bg);
+  --auth-art-right: none;
 }
 
 :root[data-theme="dark"] {
@@ -47,11 +52,12 @@
   --mist-strong: #1b3c48;
   --fg: #e6f0f3;
   --fg-muted: #a9bcc3;
-  --fg-subtle: #7d939b;
+  --fg-subtle: #91a4ab;
   --fg-faint: #4f646c;
   --fg-inverse: #0b1418;
   --line: #1c2c33;
   --line-strong: #29404a;
+  --line-control: #56707a;
   --accent: #7fd6f2;
   --accent-fg: #0b1418;
   --hover: rgb(230 240 243 / 0.055);
@@ -67,6 +73,10 @@
   --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px -12px rgb(0 0 0 / 0.5);
   --scrim: rgb(0 0 0 / 0.55);
   --code-bg: #0f1c21;
+  --auth-form-bg: #070c12;
+  /* The scrim keeps text over the bright parts of the artwork at AA contrast. The text column is
+     at most ~36rem from the panel's left edge; past that the scrim fades so the artwork shows. */
+  --auth-art-right: linear-gradient(90deg, rgb(11 20 24 / 0.8), rgb(11 20 24 / 0.8) 36rem, rgb(11 20 24 / 0.3)), url("/auth/right-side.webp");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,11 +89,12 @@
     --mist-strong: #1b3c48;
     --fg: #e6f0f3;
     --fg-muted: #a9bcc3;
-    --fg-subtle: #7d939b;
+    --fg-subtle: #91a4ab;
     --fg-faint: #4f646c;
     --fg-inverse: #0b1418;
     --line: #1c2c33;
     --line-strong: #29404a;
+    --line-control: #56707a;
     --accent: #7fd6f2;
     --accent-fg: #0b1418;
     --hover: rgb(230 240 243 / 0.055);
@@ -99,6 +110,8 @@
     --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px -12px rgb(0 0 0 / 0.5);
     --scrim: rgb(0 0 0 / 0.55);
     --code-bg: #0f1c21;
+    --auth-form-bg: #070c12;
+    --auth-art-right: linear-gradient(90deg, rgb(11 20 24 / 0.8), rgb(11 20 24 / 0.8) 36rem, rgb(11 20 24 / 0.3)), url("/auth/right-side.webp");
   }
 }
 
@@ -122,6 +135,7 @@
   --color-fg-inverse: var(--fg-inverse);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-line-control: var(--line-control);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-hover: var(--hover);
@@ -308,6 +322,17 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Sign-in page backgrounds (see --auth-form-bg and --auth-art-right). */
+@utility auth-form-bg {
+  background-color: var(--auth-form-bg);
+}
+
+@utility auth-art-right {
+  background-image: var(--auth-art-right);
+  background-size: cover;
+  background-position: center;
 }
 
 /* ── Chat prose ───────────────────────────────────────────────────────── */

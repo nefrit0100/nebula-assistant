@@ -16,6 +16,17 @@ function textOf(node: HastNode | undefined): string {
 export function makeComponents(streaming: boolean): Components {
   return {
     a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer nofollow" />,
+    // A model (or a prompt injection) can point an image at any server, and loading it would hand that
+    // server the reader's IP address and whatever the URL encodes. Show a link the reader can choose to open.
+    img: ({ src, alt }) => {
+      const label = alt ? `Image: ${alt}` : "Image"
+      if (typeof src !== "string" || !src) return <span>{label}</span>
+      return (
+        <a href={src} target="_blank" rel="noopener noreferrer nofollow">
+          {label}
+        </a>
+      )
+    },
     table: ({ node, ...props }) => (
       <div className="table-wrap">
         <table {...props} />

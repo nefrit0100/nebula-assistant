@@ -119,7 +119,7 @@ const ConversationItem = memo(function ConversationItem({
         <DropdownMenuTrigger
           aria-label={`Options for ${conversation.title}`}
           className={cn(
-            "absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-fg-subtle outline-none transition",
+            "absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-fg-subtle transition",
             "hover:bg-press hover:text-fg focus-visible:opacity-100 data-[state=open]:bg-press data-[state=open]:opacity-100",
             "pointer-fine:opacity-0 pointer-fine:group-hover/item:opacity-100",
             active && "pointer-fine:opacity-100",

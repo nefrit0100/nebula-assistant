@@ -16,7 +16,13 @@ export function describeAuthError(error: AuthError | Error | null | undefined): 
       return "An account with this email already exists. Sign in instead."
     case "weak_password":
       return "Choose a stronger password: at least 8 characters, ideally a mix of letters, numbers and symbols."
-    case "over_email_send_rate_limit":
+    case "over_email_send_rate_limit": {
+      // Two different limits share this code: a short per-address cooldown ("…only request this
+      // after 42 seconds") and the project's hourly cap on outgoing email ("email rate limit exceeded").
+      const seconds = /after (\d+) seconds?/i.exec(message)?.[1]
+      if (seconds) return `Wait ${seconds} seconds before requesting another email.`
+      return "Nebula can't send more emails right now because it has reached its hourly sending limit. Try again later."
+    }
     case "over_request_rate_limit":
       return "Too many attempts. Wait a minute and try again."
     case "signup_disabled":

@@ -4,8 +4,10 @@ import { MailCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+import { DocsDialog } from "@/components/docs/docs-dialog"
 import { Button } from "@/components/ui/button"
 import { Field, Input } from "@/components/ui/field"
+import { MIN_AGE } from "@/lib/legal"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { safeNextPath } from "@/lib/urls"
 import { describeAuthError } from "./auth-errors"
@@ -34,7 +36,8 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [pending, setPending] = useState<"email" | "google" | null>(null)
-  const form = useFormError<"email" | "password">(initialError ?? null)
+  const form = useFormError<"email" | "password" | "consent">(initialError ?? null)
+  const [agreed, setAgreed] = useState(false)
   const [needsConfirmation, setNeedsConfirmation] = useState(false)
   const [resent, setResent] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
@@ -43,6 +46,8 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
   const isSignup = mode === "signup"
   const callbackUrl = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`
   const needsCaptcha = () => captchaEnabled && !captchaToken
+  const consentMissing = isSignup && !agreed
+  const CONSENT_ERROR = `Confirm you're at least ${MIN_AGE} and accept the Terms of Service to continue.`
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -50,6 +55,7 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return form.fail("Enter a valid email address.", "email")
     if (!password) return form.fail("Enter your password.", "password")
     if (isSignup && password.length < 8) return form.fail("Use at least 8 characters for your password.", "password")
+    if (consentMissing) return form.fail(CONSENT_ERROR, "consent")
     if (needsCaptcha()) return form.fail("Complete the verification check first.")
     setPending("email")
     try {
@@ -91,6 +97,7 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
 
   async function onGoogle() {
     form.clear()
+    if (consentMissing) return form.fail(CONSENT_ERROR, "consent")
     setPending("google")
     try {
       const supabase = await getSupabaseBrowserClient()
@@ -150,7 +157,15 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
           <Button variant="secondary" onClick={resendConfirmation} disabled={resent}>
             {resent ? "Link sent again" : "Resend link"}
           </Button>
-          <Button variant="ghost" onClick={() => setNeedsConfirmation(false)}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              // A new address gets its own confirmation screen, with Resend available again.
+              setNeedsConfirmation(false)
+              setResent(false)
+              form.clear()
+            }}
+          >
             Use a different email
           </Button>
         </div>
@@ -163,9 +178,38 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
       <h1 className="text-2xl font-semibold tracking-[-0.02em]">{isSignup ? "Create your account" : "Sign in to Nebula"}</h1>
       <p className="mt-2 text-md text-fg-muted">
         {isSignup
-          ? "Free and open source. You'll add your own AI provider keys after signing up."
+          ? "Nebula itself is free and open source. You'll connect your own AI provider keys after signing up; each provider bills you for what you use."
           : "Your AI workspace, with the models you bring."}
       </p>
+
+      {isSignup && (
+        <div className="mt-7 flex items-start gap-3">
+          <input
+            {...form.control("consent")}
+            id="consent"
+            type="checkbox"
+            name="consent"
+            aria-required="true"
+            checked={agreed}
+            onChange={(event) => {
+              setAgreed(event.target.checked)
+              form.edited("consent")
+            }}
+            className="mt-0.5 size-4 shrink-0 accent-accent"
+          />
+          <label htmlFor="consent" className="text-md text-fg-muted">
+            I&apos;m at least {MIN_AGE} years old and I agree to the{" "}
+            <Link href="/terms" target="_blank" className="rounded-xs font-medium text-fg underline underline-offset-4">
+              Terms of Service
+            </Link>
+            . I&apos;ve read the{" "}
+            <Link href="/privacy" target="_blank" className="rounded-xs font-medium text-fg underline underline-offset-4">
+              Privacy Policy
+            </Link>
+            .
+          </label>
+        </div>
+      )}
 
       {googleEnabled && (
         <>
@@ -173,7 +217,7 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
             type="button"
             variant="secondary"
             size="lg"
-            className="mt-7 w-full text-md"
+            className={isSignup ? "mt-6 w-full text-md" : "mt-7 w-full text-md"}
             onClick={onGoogle}
             loading={pending === "google"}
             disabled={pending !== null}
@@ -251,6 +295,19 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
         >
           {isSignup ? "Create account" : "Continue"}
         </Button>
+        {isSignup && (
+          <p className="text-center text-sm text-fg-muted">
+            By creating an account{googleEnabled ? ", with email or Google," : ""} you agree to the{" "}
+            <Link href="/terms" target="_blank" className="rounded-xs font-medium text-fg underline underline-offset-4">
+              Terms of Service
+            </Link>{" "}
+            and confirm you&apos;ve read the{" "}
+            <Link href="/privacy" target="_blank" className="rounded-xs font-medium text-fg underline underline-offset-4">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        )}
       </form>
 
       {!signupDisabled && (
@@ -262,6 +319,33 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
           >
             {isSignup ? "Sign in" : "Create an account"}
           </Link>
+        </p>
+      )}
+
+      <p className={signupDisabled ? "mt-6 text-md text-fg-muted" : "mt-2 text-md text-fg-muted"}>
+        {isSignup ? "Want to know how it works first? " : "Need help? "}
+        <DocsDialog>
+          <button
+            type="button"
+            className="rounded-xs font-medium text-fg underline decoration-line-strong underline-offset-4 hover:decoration-fg"
+          >
+            Read the docs
+          </button>
+        </DocsDialog>
+      </p>
+
+      {!isSignup && googleEnabled && !signupDisabled && (
+        <p className="mt-4 text-sm text-fg-muted">
+          Signing in with Google for the first time creates an account. By doing so you confirm you&apos;re at least{" "}
+          {MIN_AGE} and agree to the{" "}
+          <Link href="/terms" className="rounded-xs underline underline-offset-4 hover:text-fg">
+            Terms of Service
+          </Link>
+          ; see the{" "}
+          <Link href="/privacy" className="rounded-xs underline underline-offset-4 hover:text-fg">
+            Privacy Policy
+          </Link>
+          .
         </p>
       )}
     </div>

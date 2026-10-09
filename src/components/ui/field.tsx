@@ -4,8 +4,8 @@ import { forwardRef, useId } from "react"
 import { cn } from "@/lib/cn"
 
 const control =
-  "w-full rounded-md border border-line-strong bg-bg px-3 text-md text-fg transition-[border-color,box-shadow] duration-150 " +
-  "hover:border-fg-faint focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/15 " +
+  "w-full rounded-md border border-line-control bg-bg px-3 text-md text-fg transition-[border-color,box-shadow] duration-150 " +
+  "hover:border-fg-subtle focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/15 " +
   "disabled:cursor-not-allowed disabled:opacity-55 aria-invalid:border-danger aria-invalid:focus:ring-danger/15"
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input(

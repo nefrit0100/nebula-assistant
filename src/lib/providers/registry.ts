@@ -18,7 +18,8 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
   anthropic: {
     id: "anthropic",
     name: "Anthropic",
-    description: "Claude models through the Claude API.",
+    description:
+      "Claude models through the Claude API. If some models decline a request, Anthropic may re-run it on a fallback model, billed at that model's rates.",
     keyLabel: "API key",
     keyPlaceholder: "sk-ant-…",
     keyUrl: "https://platform.claude.com/settings/keys",

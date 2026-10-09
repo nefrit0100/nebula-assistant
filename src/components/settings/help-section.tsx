@@ -4,47 +4,27 @@ import { ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import { Kbd } from "@/components/ui/kbd"
 import { publicEnv } from "@/lib/env"
+import { shortcutList, TROUBLESHOOTING } from "@/lib/help"
 import { useModKey } from "@/lib/hooks"
 import { PROVIDER_LIST } from "@/lib/providers/registry"
 import { SettingsGroup, SettingsSection } from "./primitives"
 
-const TROUBLESHOOTING = [
-  {
-    q: "My API key is rejected",
-    a: "Check that you copied the whole key with no spaces, that it hasn't been revoked, and — for Alibaba Cloud and Zhipu — that the region or platform matches where the key was created. Use Test on the provider card to check again.",
-  },
-  {
-    q: "A reply stopped partway",
-    a: "Either you pressed stop, the connection dropped, or the model reached its length limit. Use Continue under the reply to pick up where it left off, or Regenerate to start over.",
-  },
-  {
-    q: "A model I expect isn't listed",
-    a: "Nebula lists the models your key can access, as reported by the provider. New models can take a few minutes to appear; reopen the model menu to refresh. Some accounts need extra verification with the provider before certain models are available.",
-  },
-  {
-    q: "I'm seeing rate-limit or quota errors",
-    a: "Those limits come from your provider account. Wait a moment, choose another model, or raise your limits or balance in the provider's console.",
-  },
-  {
-    q: "Who can read my conversations?",
-    a: "Only you can access them in Nebula. The provider you choose processes each message to generate a reply, under its own privacy policy. See Privacy and data for details.",
-  },
-]
-
 export function HelpSection() {
-  const mod = useModKey()
-  const shortcuts = [
-    { keys: [mod, "K"], label: "Search conversations" },
-    { keys: [mod, "Shift", "O"], label: "New chat" },
-    { keys: [mod, "Shift", "S"], label: "Collapse or expand the sidebar" },
-    { keys: ["Shift", "Esc"], label: "Focus the message box" },
-    { keys: ["Enter"], label: "Send message" },
-    { keys: ["Shift", "Enter"], label: "New line" },
-    { keys: ["Esc"], label: "Close a menu or dialog" },
-  ]
+  const shortcuts = shortcutList(useModKey())
 
   return (
-    <SettingsSection title="Help" description="Everything you need to get going.">
+    <SettingsSection
+      title="Help"
+      description={
+        <>
+          Everything you need to get going. The{" "}
+          <Link href="/docs" className="font-medium text-accent hover:underline">
+            full docs
+          </Link>{" "}
+          cover every feature.
+        </>
+      }
+    >
       <SettingsGroup title="Getting started">
         <ol className="flex flex-col gap-4">
           {[

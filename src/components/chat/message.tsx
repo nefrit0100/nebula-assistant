@@ -171,7 +171,7 @@ function EditForm({
 
   return (
     <form
-      className="ml-auto w-full max-w-[min(100%,40rem)] rounded-xl border border-line-strong bg-bg p-2 shadow-raise"
+      className="ml-auto w-full max-w-[min(100%,40rem)] rounded-xl border border-line-control bg-bg p-2 shadow-raise focus-within:border-accent"
       onSubmit={(event) => {
         event.preventDefault()
         if (value.trim()) onSubmit()

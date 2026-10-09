@@ -45,7 +45,6 @@ export type ViewerInfo = {
   /** Sign-in methods linked to the account, e.g. ["email", "google"]. */
   authProviders: string[]
   identityAvatarUrl: string | null
-  identityName: string | null
 }
 
 export type WorkspaceSnapshot = {

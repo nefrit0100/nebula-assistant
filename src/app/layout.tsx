@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next"
 import { Instrument_Sans, JetBrains_Mono } from "next/font/google"
 import { cookies } from "next/headers"
+import { CookieNotice } from "@/components/legal/cookie-notice"
 import { Providers } from "@/components/providers"
 import { publicEnv } from "@/lib/env"
+import { COOKIE_NOTICE_COOKIE } from "@/lib/legal"
 import { isTheme, THEME_COOKIE } from "@/lib/settings"
 import "./globals.css"
 
@@ -55,13 +57,16 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   // The theme lives in a cookie so the server renders the right palette on the
   // first byte — no flash, no blocking script. "system" defers to the OS via CSS.
-  const stored = (await cookies()).get(THEME_COOKIE)?.value
+  const cookieStore = await cookies()
+  const stored = cookieStore.get(THEME_COOKIE)?.value
   const theme = isTheme(stored) ? stored : "system"
+  const showCookieNotice = !cookieStore.has(COOKIE_NOTICE_COOKIE)
 
   return (
     <html lang="en" data-theme={theme} className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh">
         <Providers>{children}</Providers>
+        {showCookieNotice && <CookieNotice />}
       </body>
     </html>
   )

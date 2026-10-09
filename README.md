@@ -34,7 +34,9 @@ A free, open-source AI assistant where you bring your own API keys. Connect Open
 | Models | Searchable model picker per provider, live model discovery, capability details with their source |
 | BYOK | Connect, test, edit options, replace and remove keys per provider; keys verified at save time without spending tokens |
 | Settings | Profile, personalization (name, about you, response style, custom instructions), appearance, chat preferences, privacy (export, delete all, delete account), help |
-| Accessibility | Keyboard navigation, visible focus, labelled icon buttons, accessible dialogs and menus, reduced-motion support |
+| Accessibility | Keyboard navigation with skip links, visible focus, labelled icon buttons, accessible dialogs and menus, WCAG AA text contrast and 3:1 form-control borders, reduced-motion support |
+| Legal | Privacy Policy, Terms of Service and Cookie Policy pages showing the operator's details, a cookie notice, and Terms/age (16+) consent at sign-up |
+| Docs | A public user guide at `/docs` (getting started, providers and keys, features, shortcuts, sign-in help, troubleshooting), also readable in a dialog on the sign-in and sign-up pages without leaving the form |
 
 ## Architecture
 
@@ -77,7 +79,7 @@ Requirements: Node.js 20.9 or later and a Supabase project (the free tier works)
 git clone <your-fork-url> nebula-assistant
 cd nebula-assistant
 npm install
-cp .env.example .env.local   # then fill it in, see below
+# create .env.local with the variables listed under "Environment variables" below
 npm run dev
 ```
 
@@ -102,6 +104,10 @@ Useful scripts:
 | `NEXT_PUBLIC_SITE_URL` | Public | Yes | The deployment's canonical origin, e.g. `https://nebula.example.com`. Used for metadata; an `https://` origin also turns on Secure cookies, HTTPS redirects and `upgrade-insecure-requests`. |
 | `NEXT_PUBLIC_REPO_URL` | Public | No | Your public repository URL. Open-source links appear only when this is set. |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Public | No | Cloudflare Turnstile site key for bot protection on sign-in, sign-up and password reset. See [Bot protection](#bot-protection). |
+| `NEXT_PUBLIC_OPERATOR_NAME` | Public | Before launch | Person or company running this deployment, shown on the Privacy, Terms and Cookies pages and in Settings → About. Until it's set, those pages say the operator hasn't added their details. |
+| `NEXT_PUBLIC_OPERATOR_ADDRESS` | Public | Before launch | Postal address, one line. |
+| `NEXT_PUBLIC_OPERATOR_EMAIL` | Public | Before launch | Contact address for privacy, data-deletion and legal requests; linked from the legal pages and Settings → Privacy and data. |
+| `NEXT_PUBLIC_OPERATOR_REGISTRATION` | Public | No | Company registration and VAT numbers, one line. |
 | `NEBULA_ENCRYPTION_KEY` | Server only | Yes | 32 random bytes, base64. Encrypts provider keys at rest. |
 
 Generate an encryption key:
@@ -187,6 +193,8 @@ Nebula is a standard Next.js app and runs anywhere Node.js does.
 2. Add the environment variables above (set `NEXT_PUBLIC_SITE_URL` to your production URL).
 3. Deploy, then add the production URL to Supabase's Site URL and redirect URLs.
 
+**Before offering it to others**, set the `NEXT_PUBLIC_OPERATOR_*` variables and review `/privacy`, `/terms` and `/cookies` (in `src/app/`): they describe what the software does, not your jurisdiction's specific requirements. Update `LEGAL_UPDATED` in `src/lib/legal.ts` when you change them. Accounts are limited to people aged 16 and over (`MIN_AGE` in the same file). Nebula sends only transactional account emails through Supabase Auth, so they carry no unsubscribe link; if you add any marketing email, it must include one.
+
 Streaming replies can take minutes on reasoning models; `/api/chat` sets `maxDuration = 300`. On Vercel's Hobby plan the effective limit may be lower.
 
 **Self-hosting**
@@ -205,10 +213,10 @@ Put it behind a reverse proxy with response buffering disabled for `/api/chat` (
 - **The anon role** has no table privileges at all.
 - **Column-level write grants.** Signed-in users may only write the columns the app itself writes. Ids, ownership, message roles, ordering and timestamps come from defaults, identities and triggers and can't be changed through the Data API, even on one's own rows. (Because the server acts as the user rather than with a service key, fields the server legitimately updates, such as a reply's text on Continue, remain writable by their owner.)
 - **Input validation.** API routes validate every body with zod, and the database enforces length and format checks on every user-editable column, including writes the browser makes directly. Attachments must be text: size and count are capped and binary content is refused on both sides.
-- **Output escaping.** Markdown is rendered without raw HTML, links get `rel="noopener noreferrer"`, and KaTeX runs untrusted. The only injected HTML is the code highlighter's escaped output.
+- **Output escaping.** Markdown is rendered without raw HTML, links get `rel="noopener noreferrer"`, and KaTeX runs untrusted. The only injected HTML is the code highlighter's escaped output. Images in replies render as links rather than loading automatically, so a model (or a prompt injection) can't make the browser send requests, and data in URLs, to arbitrary servers; the CSP only allows remote images from Google's profile-photo CDN.
 - **Sessions and transport.** Session cookies are `SameSite=Lax` and, on HTTPS deployments, `Secure`. They can't be `HttpOnly` because the browser client reads the session. HTTPS deployments also redirect plain-HTTP requests, send HSTS and `upgrade-insecure-requests`, and every page sends a CSP, `X-Frame-Options: DENY`, `nosniff`, a referrer policy, a permissions policy and `Cross-Origin-Opener-Policy: same-origin`.
 - **Passwords and bot protection.** Supabase Auth hashes passwords (bcrypt) and rate-limits sign-in; [Turnstile](#bot-protection) can be added for CAPTCHA protection.
-- **Dependencies.** `npm run audit:prod` audits what ships (currently clean), and `.github/dependabot.yml` keeps dependencies updated once the repository is on GitHub. The only advisories are in ESLint's toolchain (`braces`, no patched release yet), which never runs in production.
+- **Dependencies.** `npm run audit:prod` audits what ships (currently clean; `overrides` in `package.json` pins the nested KaTeX copies to the patched version), and `.github/dependabot.yml` keeps dependencies updated once the repository is on GitHub. The only advisories are in ESLint's toolchain (`braces`, no patched release yet), which never runs in production.
 - **Provider keys** are encrypted in the application with AES-256-GCM. The additional authenticated data binds each ciphertext to its user and provider, so a ciphertext copied elsewhere fails to decrypt. Clients hold no `SELECT` grant on the ciphertext column; the server reads it through a `SECURITY DEFINER` function that only returns the caller's own row.
 - **Secrets never leave the server.** Provider error messages are redacted before they reach the browser; keys never appear in URLs, logs or responses.
 - **SSRF protection.** Provider endpoints are fixed per provider; the one user-supplied endpoint (Alibaba workspaces) must be an `https://*.aliyuncs.com/compatible-mode/v1` URL.
@@ -253,4 +261,4 @@ Keep provider-specific logic inside adapters, keep new dependencies justified, a
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE). Fonts, icons and other bundled third-party assets are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

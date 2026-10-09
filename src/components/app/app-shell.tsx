@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { SkipLink } from "@/components/ui/skip-link"
 import { useWorkspace } from "@/lib/workspace/context"
 import { loadPaletteBody, SearchPalette } from "./search-palette"
 import { Sidebar } from "./sidebar"
@@ -51,12 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-bg">
-      <a
-        href="#main"
-        className="sr-only z-50 rounded-md bg-fg px-3 py-2 text-fg-inverse focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
-      >
-        Skip to content
-      </a>
+      <SkipLink />
       <Sidebar />
       <main id="main" className="relative flex min-w-0 flex-1 flex-col">
         {children}

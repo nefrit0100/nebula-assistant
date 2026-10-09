@@ -50,7 +50,7 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
     <DropdownMenuTrigger
       aria-label="Account menu"
       className={cn(
-        "flex items-center gap-2.5 rounded-md text-left outline-none transition-colors hover:bg-hover data-[state=open]:bg-hover",
+        "flex items-center gap-2.5 rounded-md text-left transition-colors hover:bg-hover data-[state=open]:bg-hover",
         compact ? "size-10 justify-center" : "h-12 w-full px-2",
       )}
     >

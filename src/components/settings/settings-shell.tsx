@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSignOut } from "@/components/app/user-menu"
 import { Logo } from "@/components/brand/logo"
+import { SkipLink } from "@/components/ui/skip-link"
 import { cn } from "@/lib/cn"
 import { SETTINGS_SECTIONS } from "./settings-nav"
 
@@ -17,6 +18,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-bg">
+      <SkipLink />
       <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-[64rem] items-center gap-3 px-4 sm:px-6">
           {/* Mobile: subpages go back to the section list. */}

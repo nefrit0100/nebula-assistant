@@ -32,23 +32,5 @@ export async function GET(request: NextRequest) {
     return fail("link_invalid")
   }
 
-  // Keep the profile photo in sync with the identity provider when the user hasn't set one.
-  const meta = data.user.user_metadata as { avatar_url?: unknown; picture?: unknown; full_name?: unknown; name?: unknown }
-  const avatar = typeof meta.avatar_url === "string" ? meta.avatar_url : typeof meta.picture === "string" ? meta.picture : null
-  if (avatar?.startsWith("https://")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("avatar_url, display_name")
-      .eq("id", data.user.id)
-      .maybeSingle()
-    if (profile && !profile.avatar_url) {
-      const name = typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : null
-      await supabase
-        .from("profiles")
-        .update({ avatar_url: avatar, ...(profile.display_name ? {} : name ? { display_name: name.slice(0, 80) } : {}) })
-        .eq("id", data.user.id)
-    }
-  }
-
   return NextResponse.redirect(new URL(next, url.origin))
 }

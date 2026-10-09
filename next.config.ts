@@ -16,8 +16,8 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${turnstile}`,
   "style-src 'self' 'unsafe-inline'",
-  // Profile photos come from the identity provider's CDN.
-  "img-src 'self' data: blob: https:",
+  // Google profile photos are the only remote images; chat replies show image links, not images.
+  "img-src 'self' data: blob: https://*.googleusercontent.com",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}`.trim(),
   `frame-src 'self'${turnstile}`,

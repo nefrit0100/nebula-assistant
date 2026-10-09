@@ -1,5 +1,7 @@
 import Link from "next/link"
 import { Logo } from "@/components/brand/logo"
+import { DocsDialog } from "@/components/docs/docs-dialog"
+import { SkipLink } from "@/components/ui/skip-link"
 import { publicEnv } from "@/lib/env"
 
 /**
@@ -9,11 +11,12 @@ import { publicEnv } from "@/lib/env"
 export function AuthShell({ children, googleEnabled = false }: { children: React.ReactNode; googleEnabled?: boolean }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
-      <div className="flex min-h-dvh flex-col px-5 pb-6 pt-5 sm:px-10 sm:pt-8">
+      <SkipLink />
+      <div className="auth-form-bg flex min-h-dvh flex-col px-5 pb-6 pt-5 sm:px-10 sm:pt-8">
         <Link href="/" className="self-start rounded-sm" aria-label="Nebula home">
           <Logo />
         </Link>
-        <main className="flex flex-1 items-center justify-center py-10">
+        <main id="main" className="flex flex-1 items-center justify-center py-10">
           <div className="w-full max-w-[360px]">{children}</div>
         </main>
         <AuthFooter />
@@ -26,11 +29,19 @@ export function AuthShell({ children, googleEnabled = false }: { children: React
 function AuthFooter() {
   return (
     <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-fg-subtle">
+      <DocsDialog>
+        <button type="button" className="rounded-xs hover:text-fg">
+          Docs
+        </button>
+      </DocsDialog>
       <Link href="/privacy" className="rounded-xs hover:text-fg">
         Privacy
       </Link>
       <Link href="/terms" className="rounded-xs hover:text-fg">
         Terms
+      </Link>
+      <Link href="/cookies" className="rounded-xs hover:text-fg">
+        Cookies
       </Link>
       {publicEnv.repoUrl && (
         <a href={publicEnv.repoUrl} className="rounded-xs hover:text-fg" target="_blank" rel="noopener noreferrer">
@@ -46,19 +57,19 @@ function BrandPanel({ googleEnabled }: { googleEnabled: boolean }) {
   const steps = [
     {
       title: "Create an account",
-      body: googleEnabled ? "With your email or Google account. It takes a few seconds." : "With your email address. It takes a few seconds.",
+      body: googleEnabled ? "With your email or Google account." : "With your email address.",
     },
     {
       title: "Connect a provider",
       body: "Paste an API key from OpenAI, Anthropic, DeepSeek, Alibaba, Zhipu, OpenRouter or OpenCode.",
     },
-    { title: "Start a conversation", body: "Pick any model your key can use and ask away." },
+    { title: "Start a conversation", body: "Pick a model your key can use and ask away." },
   ]
 
   return (
     <aside
       aria-label="About Nebula"
-      className="relative hidden bg-mist lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20"
+      className="auth-art-right relative hidden bg-mist lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20"
     >
       <div className="relative max-w-[30rem] pt-[12vh]">
         <h2 className="rise-in text-4xl font-medium tracking-[-0.03em] text-balance text-fg">

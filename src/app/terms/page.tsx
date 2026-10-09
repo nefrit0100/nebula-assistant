@@ -1,26 +1,58 @@
 import type { Metadata } from "next"
-import { LegalPage, OperatorNote } from "@/components/legal/legal-page"
+import Link from "next/link"
+import { ContactOperator, LegalPage } from "@/components/legal/legal-page"
+import { MIN_AGE } from "@/lib/legal"
 
 export const metadata: Metadata = {
-  title: "Terms",
+  title: "Terms of Service",
   description: "Terms for using Nebula Assistant.",
 }
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms" updated="October 2, 2026">
-      <OperatorNote />
+    <LegalPage title="Terms of Service">
+      <p>
+        These terms apply when you create an account on or use this Nebula deployment, which is provided by the
+        operator named above. How your data is handled is described in the <Link href="/privacy">Privacy Policy</Link>{" "}
+        and the <Link href="/cookies">Cookie Policy</Link>.
+      </p>
+
+      <h2>Who can use Nebula</h2>
+      <p>
+        You must be at least {MIN_AGE} years old to create an account. By creating one, you confirm that you are.
+      </p>
+
+      <h2>Your account</h2>
+      <p>
+        Keep your password private and tell the operator if you think someone else has access to your account. You are
+        responsible for what happens in your account.
+      </p>
+
+      <h2>Costs</h2>
+      <p>
+        Nebula has no paid plans and doesn&apos;t charge you anything. You connect your own accounts with AI providers,
+        and each provider bills you directly for the usage your messages cause, at its own rates. You are responsible
+        for those costs, for keeping those accounts in good standing, and for complying with each provider&apos;s
+        terms and usage policies.
+      </p>
+      <ul>
+        <li>
+          Prices shown in the model picker are copied from each provider&apos;s published price list, with the date
+          they were checked. They can be out of date; your provider&apos;s bill is what counts.
+        </li>
+        <li>
+          Some Claude models used with an Anthropic key can, when the model declines a request, have it re-run on a
+          fallback model chosen by Anthropic. That reply is billed at the fallback model&apos;s rates, and the
+          reply&apos;s &ldquo;More&rdquo; menu shows which model answered.
+        </li>
+        <li>Some providers bill reasoning (&ldquo;thinking&rdquo;) as output tokens.</li>
+      </ul>
 
       <h2>The software</h2>
       <p>
         Nebula Assistant is free, open-source software provided under the MIT License, &ldquo;as is&rdquo;, without
-        warranty of any kind. The full license text is included with the source code.
-      </p>
-
-      <h2>Your API keys and provider accounts</h2>
-      <p>
-        You connect your own accounts with AI providers. You are responsible for keeping those accounts in good
-        standing, for the costs they incur, and for complying with each provider&apos;s terms and usage policies.
+        warranty of any kind. The full license text is included with the source code. To the extent the law allows,
+        the operator isn&apos;t liable for losses arising from your use of the service.
       </p>
 
       <h2>AI-generated content</h2>
@@ -32,12 +64,23 @@ export default function TermsPage() {
       <h2>Acceptable use</h2>
       <p>
         Don&apos;t use Nebula to break the law, to harm others, or to attempt to access accounts or data that
-        aren&apos;t yours.
+        aren&apos;t yours. The operator may suspend or delete accounts that do.
       </p>
 
       <h2>Your content</h2>
       <p>
         You keep ownership of what you write and upload. You can export or delete it at any time from Settings.
+      </p>
+
+      <h2>Ending your account</h2>
+      <p>
+        You can delete your account at any time in <strong>Settings → Privacy and data</strong>. This permanently
+        removes your account and everything stored with it.
+      </p>
+
+      <h2>Changes and contact</h2>
+      <p>
+        When these terms change, the date at the top changes too. For questions, <ContactOperator />.
       </p>
     </LegalPage>
   )

@@ -20,6 +20,7 @@ const twMerge = extendTailwindMerge({
         "fg-inverse",
         "line",
         "line-strong",
+        "line-control",
         "accent",
         "accent-fg",
         "hover",

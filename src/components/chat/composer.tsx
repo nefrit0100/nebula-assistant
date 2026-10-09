@@ -151,7 +151,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         }}
         className={cn(
           "relative rounded-2xl border bg-bg transition-[border-color,box-shadow] duration-200 ease-soft",
-          "border-line-strong shadow-raise focus-within:border-fg-faint",
+          "border-line-control shadow-raise focus-within:border-accent",
           variant === "hero" && "shadow-pop",
           dragging && "border-accent ring-4 ring-accent/10",
         )}

@@ -40,7 +40,6 @@ export const loadWorkspace = cache(async (): Promise<WorkspaceSnapshot> => {
       authProviders: viewer.authProviders,
       identityAvatarUrl:
         typeof meta.avatar_url === "string" ? meta.avatar_url : typeof meta.picture === "string" ? meta.picture : null,
-      identityName: typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : null,
     },
     profile: {
       displayName: profile.data?.display_name ?? null,

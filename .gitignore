@@ -30,9 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — only the documented template is committed
+# env files (including .env.example): none are committed; see README → "Environment variables"
 .env*
-!.env.example
 
 # supabase cli local state
 /supabase/.temp

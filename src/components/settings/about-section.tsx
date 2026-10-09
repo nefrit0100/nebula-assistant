@@ -57,16 +57,46 @@ export function AboutSection() {
         </div>
       </SettingsGroup>
 
+      <SettingsGroup title="Open-source credits">
+        <ul className="flex flex-col gap-1.5 text-sm text-fg-muted">
+          <li>Instrument Sans and JetBrains Mono fonts: SIL Open Font License 1.1</li>
+          <li>Lucide icons: ISC License</li>
+          <li>KaTeX (math rendering and fonts) and Shiki (code highlighting): MIT License</li>
+        </ul>
+        <p className="mt-2 text-sm text-fg-muted">
+          The full list ships with the source code in THIRD_PARTY_NOTICES.md.
+        </p>
+      </SettingsGroup>
+
       <SettingsGroup title="Legal">
+        {publicEnv.operator && (
+          <p className="mb-3 text-md text-fg-muted">
+            Operated by {publicEnv.operator.name}
+            {publicEnv.operator.email && (
+              <>
+                {" "}
+                ·{" "}
+                <a href={`mailto:${publicEnv.operator.email}`} className="text-fg hover:text-accent">
+                  {publicEnv.operator.email}
+                </a>
+              </>
+            )}
+          </p>
+        )}
         <ul className="flex flex-wrap gap-x-6 gap-y-2 text-md">
           <li>
             <Link href="/privacy" className="text-fg hover:text-accent">
-              Privacy
+              Privacy Policy
             </Link>
           </li>
           <li>
             <Link href="/terms" className="text-fg hover:text-accent">
-              Terms
+              Terms of Service
+            </Link>
+          </li>
+          <li>
+            <Link href="/cookies" className="text-fg hover:text-accent">
+              Cookie Policy
             </Link>
           </li>
         </ul>

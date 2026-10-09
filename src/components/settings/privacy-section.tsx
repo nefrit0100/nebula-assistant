@@ -1,11 +1,13 @@
 "use client"
 
 import { Download } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog"
+import { ContactOperator } from "@/components/legal/legal-page"
 import { Field, Input } from "@/components/ui/field"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useActions, useWorkspaceState } from "@/lib/workspace/context"
@@ -97,11 +99,15 @@ export function PrivacySection() {
           <li>Your account email, name and profile photo.</li>
           <li>Your settings, personalization and projects.</li>
           <li>Your conversations and messages, so you can return to them.</li>
-          <li>Your provider API keys, encrypted. They are never shown back to you or sent to your browser.</li>
+          <li>Your provider API keys, encrypted. Only a short hint is ever shown; the key itself is never sent back to your browser.</li>
         </ul>
-        <p className="mt-3 text-sm text-fg-subtle">
-          Data is stored in a Supabase Postgres database with row-level security, so each account can only access its
-          own records.
+        <p className="mt-3 text-sm text-fg-muted">
+          Data is stored in a Supabase Postgres database with row-level security, so other accounts can&apos;t access
+          your records. Read the full{" "}
+          <Link href="/privacy" className="font-medium text-accent hover:underline">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </SettingsGroup>
 
@@ -130,6 +136,9 @@ export function PrivacySection() {
             Delete account
           </Button>
         </SettingsRow>
+        <p className="pt-4 text-sm text-fg-muted">
+          For other requests about your data, <ContactOperator />.
+        </p>
       </SettingsGroup>
 
       <Dialog open={confirmClear} onOpenChange={setConfirmClear}>

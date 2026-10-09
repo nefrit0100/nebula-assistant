@@ -16,12 +16,18 @@ const AUTH_ENTRY_PATHS = ["/", "/login", "/signup"]
  */
 export async function updateSession(request: NextRequest) {
   // Behind a TLS-terminating host, a plain-HTTP request means someone typed or
-  // followed an http:// link: send them to HTTPS before anything else.
-  if (publicEnv.siteUrl.startsWith("https://") && request.headers.get("x-forwarded-proto") === "http") {
-    const secure = request.nextUrl.clone()
-    secure.protocol = "https:"
-    secure.port = ""
-    return NextResponse.redirect(secure, 308)
+  // followed an http:// link: send them to HTTPS before anything else. Only for the
+  // public domain itself: browsers cache this permanent redirect, and sending it for
+  // localhost (e.g. testing with the production SITE_URL) would break local development.
+  const canonical = new URL(publicEnv.siteUrl)
+  if (
+    canonical.protocol === "https:" &&
+    request.headers.get("x-forwarded-proto") === "http" &&
+    request.headers.get("host") === canonical.host
+  ) {
+    // request.nextUrl carries the server's own host (e.g. localhost), not the one the visitor used.
+    const { pathname, search } = request.nextUrl
+    return NextResponse.redirect(new URL(`${pathname}${search}`, canonical.origin), 308)
   }
 
   let response = NextResponse.next({ request })

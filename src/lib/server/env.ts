@@ -7,7 +7,7 @@ export function getEncryptionKey(): Buffer {
   if (cachedKey) return cachedKey
   const raw = process.env.NEBULA_ENCRYPTION_KEY
   if (!raw) {
-    throw new Error("NEBULA_ENCRYPTION_KEY is not set. See .env.example.")
+    throw new Error('NEBULA_ENCRYPTION_KEY is not set. See README → "Environment variables".')
   }
   const key = Buffer.from(raw, "base64")
   if (key.length !== 32) {

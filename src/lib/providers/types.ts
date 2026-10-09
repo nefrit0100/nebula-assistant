@@ -77,7 +77,7 @@ export type ProviderOption =
 export type ProviderDefinition = {
   id: ProviderId
   name: string
-  /** One sentence for the provider card. */
+  /** Short text for the provider card, including anything that affects what the provider bills. */
   description: string
   keyLabel: string
   keyPlaceholder: string
