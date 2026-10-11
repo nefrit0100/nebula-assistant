@@ -4,6 +4,8 @@ import { SkipLink } from "@/components/ui/skip-link"
 
 const FOOTER_LINKS = [
   { href: "/docs", label: "Docs" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
   { href: "/cookies", label: "Cookies" },

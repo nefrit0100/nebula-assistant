@@ -7,6 +7,7 @@ import { MIN_AGE } from "@/lib/legal"
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How Nebula Assistant handles your account, conversations and API keys.",
+  alternates: { canonical: "/privacy" },
 }
 
 export default function PrivacyPage() {

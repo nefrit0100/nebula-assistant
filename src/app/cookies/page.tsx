@@ -7,6 +7,7 @@ import { COOKIES } from "@/lib/legal"
 export const metadata: Metadata = {
   title: "Cookie Policy",
   description: "The cookies Nebula Assistant sets and why.",
+  alternates: { canonical: "/cookies" },
 }
 
 export default function CookiesPage() {

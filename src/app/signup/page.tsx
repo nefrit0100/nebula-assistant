@@ -9,6 +9,7 @@ import { safeNextPath } from "@/lib/urls"
 export const metadata: Metadata = {
   title: "Create your account",
   description: "Create a free Nebula account and chat with the AI models you bring: OpenAI, Anthropic, DeepSeek, OpenRouter and more.",
+  alternates: { canonical: "/signup" },
 }
 
 export default async function SignupPage(props: PageProps<"/signup">) {

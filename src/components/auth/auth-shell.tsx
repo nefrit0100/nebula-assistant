@@ -29,11 +29,7 @@ export function AuthShell({ children, googleEnabled = false }: { children: React
 function AuthFooter() {
   return (
     <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-fg-subtle">
-      <DocsDialog>
-        <button type="button" className="rounded-xs hover:text-fg">
-          Docs
-        </button>
-      </DocsDialog>
+      <DocsDialog className="rounded-xs hover:text-fg">Docs</DocsDialog>
       <Link href="/privacy" className="rounded-xs hover:text-fg">
         Privacy
       </Link>

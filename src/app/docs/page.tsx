@@ -5,6 +5,7 @@ import { PublicPage } from "@/components/site/public-page"
 export const metadata: Metadata = {
   title: "Docs",
   description: "How to get started with Nebula Assistant: accounts, providers and API keys, features, shortcuts and help.",
+  alternates: { canonical: "/docs" },
 }
 
 export default function DocsPage() {

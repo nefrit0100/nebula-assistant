@@ -8,8 +8,9 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Everything except static assets, image optimization, metadata files, API
-    // routes (route handlers verify the session themselves and answer with JSON)
-    // and the sandboxed HTML preview page, which never touches the session.
-    "/((?!api|preview$|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|opengraph-image|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    // routes (route handlers verify the session themselves and answer with JSON),
+    // the sandboxed HTML preview page, which never touches the session, and the
+    // public machine-readable files for agents.
+    "/((?!api|preview$|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|opengraph-image|robots.txt|sitemap.xml|manifest.webmanifest|llms.txt$|openapi.json$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 }

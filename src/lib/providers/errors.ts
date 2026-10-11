@@ -30,6 +30,8 @@ export type ApiErrorPayload = {
   /** Sanitized technical detail (status, provider message) for the "Details" disclosure. */
   detail?: string
   retryable?: boolean
+  /** What to do about it. Sent with HTTP error responses; the UI reads ERROR_COPY instead. */
+  hint?: string
 }
 
 type ErrorCopy = { title: string; hint?: string; retryable: boolean }

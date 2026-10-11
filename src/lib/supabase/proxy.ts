@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { markdownForAgents } from "@/lib/agents/markdown-response"
 import { publicEnv } from "@/lib/env"
 import { SESSION_COOKIE_OPTIONS } from "./cookies"
 
@@ -29,6 +30,9 @@ export async function updateSession(request: NextRequest) {
     const { pathname, search } = request.nextUrl
     return NextResponse.redirect(new URL(`${pathname}${search}`, canonical.origin), 308)
   }
+
+  const agentResponse = markdownForAgents(request)
+  if (agentResponse) return agentResponse
 
   let response = NextResponse.next({ request })
 

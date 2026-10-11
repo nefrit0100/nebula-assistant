@@ -6,6 +6,7 @@ import { MIN_AGE } from "@/lib/legal"
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms for using Nebula Assistant.",
+  alternates: { canonical: "/terms" },
 }
 
 export default function TermsPage() {

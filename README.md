@@ -94,6 +94,7 @@ Useful scripts:
 | `npm start` | Serve the production build |
 | `npm run lint` | ESLint (includes React Compiler-aware hooks rules) |
 | `npm run typecheck` | TypeScript, no emit |
+| `npm test` | Unit tests with Node's built-in test runner (Node 22.18+ runs the TypeScript directly; no extra dependencies) |
 
 ## Environment variables
 
@@ -254,6 +255,7 @@ Issues and pull requests are welcome. Before opening a PR:
 ```bash
 npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
 

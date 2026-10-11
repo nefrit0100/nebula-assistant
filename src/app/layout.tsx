@@ -26,7 +26,7 @@ const description =
 export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.siteUrl),
   title: {
-    default: "Nebula Assistant — Your AI workspace",
+    default: "Nebula Assistant — Free, open-source AI assistant",
     template: "%s – Nebula",
   },
   description,
@@ -34,12 +34,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Nebula Assistant",
-    title: "Nebula Assistant — Your AI workspace",
+    title: "Nebula Assistant — Free, open-source AI assistant",
     description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nebula Assistant — Your AI workspace",
+    title: "Nebula Assistant — Free, open-source AI assistant",
     description,
   },
 }

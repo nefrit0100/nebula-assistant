@@ -324,13 +324,8 @@ export function AuthForm({ mode, googleEnabled, signupDisabled, next, initialErr
 
       <p className={signupDisabled ? "mt-6 text-md text-fg-muted" : "mt-2 text-md text-fg-muted"}>
         {isSignup ? "Want to know how it works first? " : "Need help? "}
-        <DocsDialog>
-          <button
-            type="button"
-            className="rounded-xs font-medium text-fg underline decoration-line-strong underline-offset-4 hover:decoration-fg"
-          >
-            Read the docs
-          </button>
+        <DocsDialog className="rounded-xs font-medium text-fg underline decoration-line-strong underline-offset-4 hover:decoration-fg">
+          Read the docs
         </DocsDialog>
       </p>
 

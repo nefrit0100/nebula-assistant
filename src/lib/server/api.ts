@@ -2,15 +2,17 @@ import "server-only"
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { z } from "zod"
-import { type ErrorCode, toApiError } from "@/lib/providers/errors"
+import { ERROR_COPY, type ErrorCode, toApiError } from "@/lib/providers/errors"
 import type { Database } from "@/lib/supabase/database.types"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { getViewer, type Viewer } from "./auth"
 
 const NO_STORE = { "cache-control": "no-store" }
 
+/** Structured JSON error: a stable code, a message, an optional detail and a resolution hint. */
 export function jsonError(code: ErrorCode, status: number, detail?: string) {
-  return Response.json({ error: toApiError(code, detail) }, { status, headers: NO_STORE })
+  const hint = ERROR_COPY[code].hint
+  return Response.json({ error: { ...toApiError(code, detail), ...(hint ? { hint } : {}) } }, { status, headers: NO_STORE })
 }
 
 export function json<T>(body: T, init?: ResponseInit) {
