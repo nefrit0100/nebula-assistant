@@ -6,20 +6,24 @@ const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.en
 const servedOverHttps = (process.env.NEXT_PUBLIC_SITE_URL ?? "").startsWith("https://")
 // Cloudflare Turnstile (optional bot check on the auth forms) loads a script and an iframe.
 const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? " https://challenges.cloudflare.com" : ""
+// Cloudflare Web Analytics, injected by Cloudflare when enabled for the zone: a script and its beacon.
+const cfAnalyticsScript = " https://static.cloudflareinsights.com"
+const cfAnalyticsBeacon = " https://cloudflareinsights.com"
 
 /**
- * Content Security Policy. The browser only talks to this origin and Supabase
- * (auth + RLS-scoped data); provider calls happen on the server. Inline scripts
+ * Content Security Policy. The browser only talks to this origin, Supabase
+ * (auth + RLS-scoped data) and Cloudflare (Turnstile, Web Analytics); provider
+ * calls happen on the server. Inline scripts
  * are needed for Next.js hydration; dev mode also needs eval for fast refresh.
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${turnstile}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${turnstile}${cfAnalyticsScript}`,
   "style-src 'self' 'unsafe-inline'",
   // Google profile photos are the only remote images; chat replies show image links, not images.
   "img-src 'self' data: blob: https://*.googleusercontent.com",
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}`.trim(),
+  `connect-src 'self' ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}${cfAnalyticsBeacon}`.trim(),
   `frame-src 'self'${turnstile}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
