@@ -69,6 +69,17 @@ export async function PUT(request: Request, ctx: RouteContext<"/api/providers/[p
     lastError = failure.detail?.slice(0, 300) ?? failure.code
   }
 
+  let secretCiphertext: string | undefined
+  if (body.apiKey) {
+    try {
+      secretCiphertext = await encryptSecret(apiKey, viewer.id, provider)
+    } catch (error) {
+      // Usually a missing or malformed NEBULA_ENCRYPTION_KEY; the message names it (never the key).
+      console.error("[providers] encrypt failed:", error instanceof Error ? error.message : error)
+      return jsonError("unknown", 500, "Could not save the credential.")
+    }
+  }
+
   const now = new Date().toISOString()
   const record = {
     key_hint: keyHint(apiKey),
@@ -76,7 +87,7 @@ export async function PUT(request: Request, ctx: RouteContext<"/api/providers/[p
     status,
     last_verified_at: status === "valid" ? now : null,
     last_error: lastError,
-    ...(body.apiKey ? { secret_ciphertext: encryptSecret(apiKey, viewer.id, provider) } : {}),
+    ...(secretCiphertext ? { secret_ciphertext: secretCiphertext } : {}),
   }
 
   // Explicit insert-or-update: clients hold no UPDATE grant on user_id/provider_id,

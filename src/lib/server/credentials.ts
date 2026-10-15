@@ -25,8 +25,10 @@ export async function loadProviderContext(
 
   let apiKey: string
   try {
-    apiKey = decryptSecret(row.secret_ciphertext, userId, provider)
-  } catch {
+    apiKey = await decryptSecret(row.secret_ciphertext, userId, provider)
+  } catch (error) {
+    // A missing or changed NEBULA_ENCRYPTION_KEY lands here too: say which in the server log.
+    console.error("[credentials] decrypt failed:", error instanceof Error ? error.message : error)
     throw new ProviderError("credential_unreadable")
   }
   const options = normalizeProviderOptions(provider, row.options as Record<string, unknown>)

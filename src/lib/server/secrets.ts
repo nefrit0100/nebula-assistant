@@ -1,10 +1,27 @@
 import "server-only"
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
 import { getEncryptionKey } from "./env"
 
 const VERSION = "v1"
-const ALGORITHM = "aes-256-gcm"
+const TAG_BYTES = 16
+
+/*
+ * AES-256-GCM through Web Crypto rather than node:crypto: Cloudflare Workers
+ * only emulates parts of node:crypto, and creating a cipher there failed, while
+ * Web Crypto is native everywhere Nebula runs. The stored format is unchanged
+ * ("v1.<iv>.<tag>.<ciphertext>", base64url), so either implementation reads the other's.
+ */
+
+let keyPromise: Promise<CryptoKey> | null = null
+function cryptoKey(): Promise<CryptoKey> {
+  keyPromise ??= crypto.subtle.importKey("raw", getEncryptionKey(), "AES-GCM", false, ["encrypt", "decrypt"]).catch(
+    (error: unknown) => {
+      keyPromise = null
+      throw error
+    },
+  )
+  return keyPromise
+}
 
 /**
  * Additional authenticated data binds each ciphertext to its owner and provider:
@@ -12,27 +29,50 @@ const ALGORITHM = "aes-256-gcm"
  * authentication instead of decrypting.
  */
 function aad(userId: string, providerId: string) {
-  return Buffer.from(`nebula:credential:${userId}:${providerId}`, "utf8")
+  return new TextEncoder().encode(`nebula:credential:${userId}:${providerId}`)
 }
 
-export function encryptSecret(plaintext: string, userId: string, providerId: string): string {
-  const iv = randomBytes(12)
-  const cipher = createCipheriv(ALGORITHM, getEncryptionKey(), iv)
-  cipher.setAAD(aad(userId, providerId))
-  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()])
-  const tag = cipher.getAuthTag()
-  return [VERSION, iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(".")
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = ""
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 }
 
-export function decryptSecret(payload: string, userId: string, providerId: string): string {
+function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(atob(text.replace(/-/g, "+").replace(/_/g, "/")), (char) => char.charCodeAt(0))
+}
+
+export async function encryptSecret(plaintext: string, userId: string, providerId: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const sealed = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv, additionalData: aad(userId, providerId), tagLength: TAG_BYTES * 8 },
+      await cryptoKey(),
+      new TextEncoder().encode(plaintext),
+    ),
+  )
+  // Web Crypto appends the tag to the ciphertext; the stored format keeps it separate.
+  const ciphertext = sealed.subarray(0, sealed.length - TAG_BYTES)
+  const tag = sealed.subarray(sealed.length - TAG_BYTES)
+  return [VERSION, toBase64Url(iv), toBase64Url(tag), toBase64Url(ciphertext)].join(".")
+}
+
+export async function decryptSecret(payload: string, userId: string, providerId: string): Promise<string> {
   const [version, ivPart, tagPart, dataPart] = payload.split(".")
   if (version !== VERSION || !ivPart || !tagPart || !dataPart) {
     throw new Error("Unsupported credential format")
   }
-  const decipher = createDecipheriv(ALGORITHM, getEncryptionKey(), Buffer.from(ivPart, "base64url"))
-  decipher.setAAD(aad(userId, providerId))
-  decipher.setAuthTag(Buffer.from(tagPart, "base64url"))
-  return Buffer.concat([decipher.update(Buffer.from(dataPart, "base64url")), decipher.final()]).toString("utf8")
+  const ciphertext = fromBase64Url(dataPart)
+  const tag = fromBase64Url(tagPart)
+  const sealed = new Uint8Array(ciphertext.length + tag.length)
+  sealed.set(ciphertext)
+  sealed.set(tag, ciphertext.length)
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: fromBase64Url(ivPart), additionalData: aad(userId, providerId), tagLength: TAG_BYTES * 8 },
+    await cryptoKey(),
+    sealed,
+  )
+  return new TextDecoder().decode(plaintext)
 }
 
 /** A short, non-reversible label such as "sk-…91A2" for showing which key is saved. */
