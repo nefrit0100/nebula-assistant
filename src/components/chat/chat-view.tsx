@@ -91,6 +91,16 @@ export function ChatView({ conversationId, initialMessages, hasEarlier, projectI
     [chat],
   )
 
+  // Stable, so memoized messages skip re-rendering while a reply streams in.
+  const { edit } = chat
+  const onEdit = useCallback(
+    (id: string, content: string) => {
+      edit(id, content)
+      setSendToken((token) => token + 1)
+    },
+    [edit],
+  )
+
   const onPickSuggestion = useCallback((suggestion: Suggestion) => {
     composerRef.current?.setDraft(suggestion.prompt)
     if (suggestion.attach) composerRef.current?.openFilePicker()
@@ -157,10 +167,7 @@ export function ChatView({ conversationId, initialMessages, hasEarlier, projectI
         modelNames={modelNames}
         sendToken={sendToken}
         onRegenerate={chat.regenerate}
-        onEdit={(id, content) => {
-          chat.edit(id, content)
-          setSendToken((token) => token + 1)
-        }}
+        onEdit={onEdit}
         onContinue={chat.continueMessage}
         onFeedback={chat.setFeedback}
         footer={

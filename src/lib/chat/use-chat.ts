@@ -466,10 +466,12 @@ export function useChat(options: UseChatOptions) {
     else getLiveRun(stateRef.current.conversationId)?.stop()
   }, [])
 
-  const loadEarlier = useCallback(async () => {
+  /** Fetches the previous page. Resolves false if it failed (the reader has been told). */
+  const loadEarlier = useCallback(async (): Promise<boolean> => {
     const { messages, conversationId, loadingEarlier } = stateRef.current
     const oldest = messages.find((message) => message.seq !== null)
-    if (!conversationId || !oldest?.seq || loadingEarlier) return
+    if (!conversationId || !oldest?.seq || loadingEarlier) return true
+    stateRef.current = { ...stateRef.current, loadingEarlier: true }
     dispatch({ type: "loadingEarlier", value: true })
     const before = oldest.seq
     const { data, error } = await getSupabaseBrowserClient()
@@ -486,13 +488,14 @@ export function useChat(options: UseChatOptions) {
     if (error || !data) {
       dispatch({ type: "loadingEarlier", value: false })
       toast.error("Couldn't load earlier messages")
-      return
+      return false
     }
     dispatch({
       type: "prepend",
       messages: data.slice(0, MESSAGE_PAGE_SIZE).map(toChatMessage).reverse(),
       hasEarlier: data.length > MESSAGE_PAGE_SIZE,
     })
+    return true
   }, [])
 
   const setFeedback = useCallback(async (messageId: string, value: 1 | -1) => {
