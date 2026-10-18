@@ -6,6 +6,8 @@ import { getAuthSettings } from "@/lib/server/auth-settings"
 export const metadata: Metadata = {
   title: "Reset your password",
   description: "Get a link to choose a new password for your Nebula account.",
+  // A utility page: no search value of its own, but its links still count.
+  robots: { index: false, follow: true },
 }
 
 export default async function ForgotPasswordPage() {

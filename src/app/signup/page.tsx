@@ -3,14 +3,16 @@ import { redirect } from "next/navigation"
 import { AuthForm } from "@/components/auth/auth-form"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { getViewer } from "@/lib/server/auth"
+import { pageMetadata } from "@/lib/seo"
 import { getAuthSettings } from "@/lib/server/auth-settings"
 import { safeNextPath } from "@/lib/urls"
 
-export const metadata: Metadata = {
-  title: "Create your account",
-  description: "Create a free Nebula account and chat with the AI models you bring: OpenAI, Anthropic, DeepSeek, OpenRouter and more.",
-  alternates: { canonical: "/signup" },
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Create a free account",
+  description:
+    "Create a free Nebula Assistant account and chat with the AI models you bring: OpenAI, Anthropic, DeepSeek, OpenRouter and more, with your own API keys.",
+  path: "/signup",
+})
 
 export default async function SignupPage(props: PageProps<"/signup">) {
   const searchParams = await props.searchParams

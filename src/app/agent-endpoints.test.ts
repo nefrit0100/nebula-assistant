@@ -45,9 +45,10 @@ test("GET /openapi.json serves the spec as JSON", async () => {
   assert.ok(body.paths["/api/catalog"])
 })
 
-test("GET /llms.txt serves Markdown", async () => {
+test("GET /llms.txt serves Markdown, kept out of search results", async () => {
   const response = llms.GET()
   assert.equal(response.headers.get("content-type"), "text/markdown; charset=utf-8")
+  assert.equal(response.headers.get("x-robots-tag"), "noindex")
   assert.match(await response.text(), /^# Nebula Assistant\n\n> /)
 })
 

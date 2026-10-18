@@ -3,12 +3,14 @@ import Link from "next/link"
 import { ContactOperator, LegalPage } from "@/components/legal/legal-page"
 import { publicEnv } from "@/lib/env"
 import { MIN_AGE } from "@/lib/legal"
+import { pageMetadata } from "@/lib/seo"
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
-  description: "How Nebula Assistant handles your account, conversations and API keys.",
-  alternates: { canonical: "/privacy" },
-}
+  description:
+    "How Nebula Assistant handles your account, conversations and encrypted API keys, what AI providers receive, and how to export or delete your data.",
+  path: "/privacy",
+})
 
 export default function PrivacyPage() {
   return (

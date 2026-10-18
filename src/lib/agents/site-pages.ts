@@ -1,7 +1,7 @@
 import { LEGAL_UPDATED } from "@/lib/legal"
 
 /** When the non-legal public pages last changed (YYYY-MM-DD). Update it with their content. */
-export const PAGES_UPDATED = "2026-10-11"
+export const PAGES_UPDATED = "2026-10-18"
 
 /** "October 8, 2026" → "2026-10-08", the same calendar day in every timezone. */
 export function isoDay(display: string): string {

@@ -27,6 +27,11 @@ const PAGE = `<!doctype html>
 
 export function GET() {
   return new Response(PAGE, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" },
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+      // An empty shell on its own: never a search result.
+      "x-robots-tag": "noindex, nofollow",
+    },
   })
 }

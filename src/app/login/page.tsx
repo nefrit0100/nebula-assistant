@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation"
+import { permanentRedirect } from "next/navigation"
 
-/** /login is an alias for the gateway at /. */
+/** /login is a permanent alias for the gateway at / (308, so search engines fold it into /). */
 export default async function LoginPage(props: PageProps<"/login">) {
   const searchParams = await props.searchParams
   const query = new URLSearchParams()
@@ -8,5 +8,5 @@ export default async function LoginPage(props: PageProps<"/login">) {
     if (typeof value === "string") query.set(key, value)
   }
   const suffix = query.toString()
-  redirect(suffix ? `/?${suffix}` : "/")
+  permanentRedirect(suffix ? `/?${suffix}` : "/")
 }

@@ -30,6 +30,12 @@ function AuthFooter() {
   return (
     <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-fg-subtle">
       <DocsDialog className="rounded-xs hover:text-fg">Docs</DocsDialog>
+      <Link href="/about" className="rounded-xs hover:text-fg">
+        About
+      </Link>
+      <Link href="/contact" className="rounded-xs hover:text-fg">
+        Contact
+      </Link>
       <Link href="/privacy" className="rounded-xs hover:text-fg">
         Privacy
       </Link>

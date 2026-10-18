@@ -1,12 +1,14 @@
 import type { Metadata } from "next"
 import { DocsContent } from "@/components/docs/docs-content"
 import { PublicPage } from "@/components/site/public-page"
+import { pageMetadata } from "@/lib/seo"
 
-export const metadata: Metadata = {
-  title: "Docs",
-  description: "How to get started with Nebula Assistant: accounts, providers and API keys, features, shortcuts and help.",
-  alternates: { canonical: "/docs" },
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Docs: getting started and API key setup",
+  description:
+    "How to get started with Nebula Assistant: create an account, connect OpenAI, Anthropic, DeepSeek or OpenRouter API keys, pick a model, and fix common problems.",
+  path: "/docs",
+})
 
 export default function DocsPage() {
   return (

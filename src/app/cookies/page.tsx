@@ -3,12 +3,14 @@ import Link from "next/link"
 import { LegalPage } from "@/components/legal/legal-page"
 import { publicEnv } from "@/lib/env"
 import { COOKIES } from "@/lib/legal"
+import { pageMetadata } from "@/lib/seo"
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Cookie Policy",
-  description: "The cookies Nebula Assistant sets and why.",
-  alternates: { canonical: "/cookies" },
-}
+  description:
+    "Every cookie Nebula Assistant sets, what it's for and how long it lasts. Only necessary and preference cookies: no analytics or advertising.",
+  path: "/cookies",
+})
 
 export default function CookiesPage() {
   return (

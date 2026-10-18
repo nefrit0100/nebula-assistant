@@ -1,8 +1,10 @@
 import Link from "next/link"
 import { Logo } from "@/components/brand/logo"
 import { SkipLink } from "@/components/ui/skip-link"
+import { publicEnv } from "@/lib/env"
 
 const FOOTER_LINKS = [
+  { href: "/signup", label: "Sign up" },
   { href: "/docs", label: "Docs" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -21,7 +23,8 @@ export function PublicPage({ children }: { children: React.ReactNode }) {
           <Link href="/" className="rounded-sm" aria-label="Nebula home">
             <Logo />
           </Link>
-          <Link href="/app" className="rounded-xs text-md text-fg-muted hover:text-fg">
+          {/* "/" rather than "/app": it opens the workspace when signed in, and isn't blocked for crawlers. */}
+          <Link href="/" className="rounded-xs text-md text-fg-muted hover:text-fg">
             Open Nebula
           </Link>
         </div>
@@ -36,6 +39,11 @@ export function PublicPage({ children }: { children: React.ReactNode }) {
               {link.label}
             </Link>
           ))}
+          {publicEnv.repoUrl && (
+            <a href={publicEnv.repoUrl} className="rounded-xs hover:text-fg" target="_blank" rel="noopener noreferrer">
+              Source code
+            </a>
+          )}
         </nav>
       </footer>
     </div>

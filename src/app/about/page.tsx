@@ -3,12 +3,15 @@ import Link from "next/link"
 import { PublicPage } from "@/components/site/public-page"
 import { publicEnv } from "@/lib/env"
 import { PROVIDER_LIST } from "@/lib/providers/registry"
+import { pageMetadata } from "@/lib/seo"
 
-export const metadata: Metadata = {
-  title: "About",
-  description: "What Nebula Assistant is, who it's for, and how it keeps your API keys safe.",
-  alternates: { canonical: "/about" },
-}
+export const metadata: Metadata = pageMetadata({
+  title: "About Nebula Assistant — open-source, bring-your-own-key AI",
+  description:
+    "What Nebula Assistant is, who it's for, how it keeps your API keys encrypted on the server, and why it's free and open source.",
+  path: "/about",
+  absolute: true,
+})
 
 export default function AboutPage() {
   const operator = publicEnv.operator

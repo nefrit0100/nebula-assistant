@@ -110,6 +110,8 @@ Useful scripts:
 | `NEXT_PUBLIC_OPERATOR_EMAIL` | Public | Before launch | Contact address for privacy, data-deletion and legal requests; linked from the legal pages and Settings → Privacy and data. |
 | `NEXT_PUBLIC_OPERATOR_REGISTRATION` | Public | No | Company registration and VAT numbers, one line. |
 | `NEBULA_ENCRYPTION_KEY` | Server only | Yes | 32 random bytes, base64. Encrypts provider keys at rest. |
+| `GOOGLE_SITE_VERIFICATION` | Server only | No | The `content` value of Google Search Console's HTML-tag verification. Adds the `google-site-verification` meta tag. |
+| `BING_SITE_VERIFICATION` | Server only | No | The `content` value of Bing Webmaster Tools' meta-tag verification. Adds the `msvalidate.01` meta tag. |
 
 Generate an encryption key:
 

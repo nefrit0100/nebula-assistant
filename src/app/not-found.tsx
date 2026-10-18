@@ -12,7 +12,7 @@ export default function NotFound() {
       <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em]">This page doesn’t exist.</h1>
       <p className="mt-2 text-md text-fg-muted">Check the address, or head back to your conversations.</p>
       <Button asChild className="mt-6">
-        <Link href="/app">Go to Nebula</Link>
+        <Link href="/">Go to Nebula</Link>
       </Button>
     </main>
   )

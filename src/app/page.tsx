@@ -7,9 +7,10 @@ import { JsonLd } from "@/components/site/json-ld"
 import { homeStructuredData } from "@/lib/agents/structured-data"
 import { getViewer } from "@/lib/server/auth"
 import { getAuthSettings } from "@/lib/server/auth-settings"
+import { HOME_DESCRIPTION, HOME_TITLE, pageMetadata } from "@/lib/seo"
 import { safeNextPath } from "@/lib/urls"
 
-export const metadata: Metadata = { alternates: { canonical: "/" } }
+export const metadata: Metadata = pageMetadata({ title: HOME_TITLE, description: HOME_DESCRIPTION, path: "/", absolute: true })
 
 /** The gateway: signed-in visitors go straight to /app, everyone else signs in here. */
 export default async function GatewayPage(props: PageProps<"/">) {

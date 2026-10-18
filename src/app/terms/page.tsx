@@ -2,12 +2,14 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ContactOperator, LegalPage } from "@/components/legal/legal-page"
 import { MIN_AGE } from "@/lib/legal"
+import { pageMetadata } from "@/lib/seo"
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
-  description: "Terms for using Nebula Assistant.",
-  alternates: { canonical: "/terms" },
-}
+  description:
+    "Terms for using Nebula Assistant: who can sign up, how provider costs work with your own API keys, acceptable use, and your content.",
+  path: "/terms",
+})
 
 export default function TermsPage() {
   return (

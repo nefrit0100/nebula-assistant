@@ -49,14 +49,20 @@ export function DocsContent({ variant }: { variant: Variant }) {
       <p>
         Nebula is a free, open-source AI assistant where you bring your own API keys. You connect the AI providers you
         already have an account with, and chat with their models in one place. Nebula has no paid plans: each provider
-        bills you directly for the messages you send through it.
+        bills you directly for the messages you send through it.{" "}
+        <Link href="/about" {...internal}>
+          More about Nebula
+        </Link>
+        .
       </p>
 
       <H id="getting-started">{title("getting-started")}</H>
       <ol>
         <li>
-          <strong>Create an account</strong> with your email address and a password of at least 8 characters, then open
-          the confirmation link we email you. If this deployment offers it, you can continue with Google instead. You
+          {/* The dialog already sits next to the sign-up form, so only the page links to it. */}
+          <strong>{variant === "page" ? <Link href="/signup">Create an account</Link> : "Create an account"}</strong>{" "}
+          with your email address and a password of at least 8 characters, then open the confirmation link we email
+          you. If this deployment offers it, you can continue with Google instead. You
           must be at least {MIN_AGE} years old.
         </li>
         <li>

@@ -17,14 +17,16 @@ const AUTH_ENTRY_PATHS = ["/", "/login", "/signup"]
  */
 export async function updateSession(request: NextRequest) {
   // Behind a TLS-terminating host, a plain-HTTP request means someone typed or
-  // followed an http:// link: send them to HTTPS before anything else. Only for the
-  // public domain itself: browsers cache this permanent redirect, and sending it for
-  // localhost (e.g. testing with the production SITE_URL) would break local development.
+  // followed an http:// link: send them to HTTPS before anything else. The www and
+  // bare forms of the domain fold into the canonical one the same way, so each page
+  // has a single URL. Only for the public domain itself: browsers cache this permanent
+  // redirect, and sending it for localhost (e.g. testing with the production SITE_URL)
+  // would break local development.
   const canonical = new URL(publicEnv.siteUrl)
+  const host = request.headers.get("host")
   if (
     canonical.protocol === "https:" &&
-    request.headers.get("x-forwarded-proto") === "http" &&
-    request.headers.get("host") === canonical.host
+    ((host === canonical.host && request.headers.get("x-forwarded-proto") === "http") || isWwwAlias(host, canonical.host))
   ) {
     // request.nextUrl carries the server's own host (e.g. localhost), not the one the visitor used.
     const { pathname, search } = request.nextUrl
@@ -78,6 +80,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   return response
+}
+
+/** "www.example.com" for "example.com", or the other way round. */
+function isWwwAlias(host: string | null, canonicalHost: string): boolean {
+  if (!host) return false
+  return host === `www.${canonicalHost}` || canonicalHost === `www.${host}`
 }
 
 /** Redirect while preserving any refreshed auth cookies. */

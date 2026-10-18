@@ -3,12 +3,14 @@ import Link from "next/link"
 import { ContactOperator } from "@/components/legal/legal-page"
 import { PublicPage } from "@/components/site/public-page"
 import { publicEnv } from "@/lib/env"
+import { pageMetadata } from "@/lib/seo"
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "How to get help with Nebula Assistant, report a bug, or report a security issue.",
-  alternates: { canonical: "/contact" },
-}
+export const metadata: Metadata = pageMetadata({
+  title: "Contact and support",
+  description:
+    "How to get help with Nebula Assistant, report a bug or request a feature, report a security issue privately, or make a privacy request.",
+  path: "/contact",
+})
 
 const LINK = "text-accent underline underline-offset-2"
 
