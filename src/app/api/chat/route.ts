@@ -57,6 +57,16 @@ const BodySchema = z.object({
 const HISTORY_LIMIT = 200
 const IDLE_TIMEOUT_MS = 120_000
 const CONTINUE_PROMPT = "Continue exactly where you left off. Do not repeat anything you already wrote."
+/** messages.content and messages.reasoning check constraints (see the initial migration). */
+const MAX_CONTENT_CHARS = 400_000
+const MAX_REASONING_CHARS = 200_000
+
+/** Truncates without splitting a surrogate pair, which Postgres would reject. */
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text
+  const end = /[\uD800-\uDBFF]/.test(text[max - 1]) ? max - 1 : max
+  return text.slice(0, end)
+}
 
 export async function POST(request: Request) {
   const auth = await authenticate()
@@ -136,10 +146,20 @@ export async function POST(request: Request) {
     if (body.action === "edit") {
       if (targetMessage.role !== "user") return jsonError("invalid_input", 400, "Only your own messages can be edited.")
       removedFromSeq = target.seq
-      const { error } = await supabase.from("messages").delete().eq("conversation_id", conversation.id).gte("seq", target.seq)
-      if (error) return jsonError("unknown", 500, "Could not update the conversation.")
+      // Save the edited message before dropping what it replaces, so a failed write never
+      // loses the transcript. It gets a newer seq, so it lands where the old one was.
       userMessage = await insertUserMessage(conversation.id, content, targetMessage.attachments)
       if (!userMessage) return jsonError("unknown", 500, "Could not save your message.")
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("conversation_id", conversation.id)
+        .gte("seq", target.seq)
+        .neq("id", userMessage.id)
+      if (error) {
+        await supabase.from("messages").delete().eq("id", userMessage.id)
+        return jsonError("unknown", 500, "Could not update the conversation.")
+      }
     } else if (body.action === "regenerate") {
       // Regenerating an assistant reply drops it; regenerating from a user message drops what follows.
       removedFromSeq = targetMessage.role === "assistant" ? target.seq : target.seq + 1
@@ -309,8 +329,10 @@ export async function POST(request: Request) {
     }
 
     const row = {
-      content: (continueTarget?.content ?? "") + text,
-      reasoning: ((continueTarget?.reasoning ?? "") + reasoning).slice(0, 200_000),
+      // Capped to the column limits: an over-long reply (or one grown by Continue) is kept
+      // truncated rather than failing the insert and losing it entirely.
+      content: clip((continueTarget?.content ?? "") + text, MAX_CONTENT_CHARS),
+      reasoning: clip((continueTarget?.reasoning ?? "") + reasoning, MAX_REASONING_CHARS),
       status,
       provider_id: provider,
       model_id: body.model,
