@@ -32,7 +32,8 @@ export async function PUT(request: Request, ctx: RouteContext<"/api/providers/[p
 
   const body = await parseBody(request, SaveSchema)
   if (body instanceof Response) return body
-  if (!(await rateLimit(supabase, "credentials", 20, 60))) return jsonError("nebula_rate_limited", 429)
+  const limited = await rateLimit(supabase, "credentials", 20, 60)
+  if (limited) return limited
 
   const options = normalizeProviderOptions(provider, body.options)
   if (provider === "alibaba" && options.region === "custom") {

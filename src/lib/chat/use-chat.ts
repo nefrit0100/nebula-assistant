@@ -43,13 +43,13 @@ type Action =
   | { type: "replace"; id: string; message: ChatMessage }
   | { type: "fail"; id: string; error: ApiErrorPayload }
   | { type: "settle"; id: string; cancelled: boolean }
-  | { type: "rollback"; messages: ChatMessage[]; error: ApiErrorPayload }
+  | { type: "rollback"; messages: ChatMessage[]; error: ApiErrorPayload | null }
   | { type: "prepend"; messages: ChatMessage[]; hasEarlier: boolean }
   | { type: "patch"; id: string; patch: Partial<ChatMessage> }
   | { type: "loadingEarlier"; value: boolean }
   | { type: "clearError" }
   | { type: "reset"; messages: ChatMessage[]; hasEarlier: boolean }
-  | { type: "sync"; run: LiveRun }
+  | { type: "sync"; run: LiveRun; base?: ChatMessage[] }
 
 function reducer(state: ChatState, action: Action): ChatState {
   switch (action.type) {
@@ -58,7 +58,7 @@ function reducer(state: ChatState, action: Action): ChatState {
       return {
         ...state,
         conversationId: action.run.conversationId,
-        messages: mergeLiveRun(state.messages, action.run),
+        messages: mergeLiveRun(action.base ?? state.messages, action.run),
         status: action.run.done ? "idle" : "streaming",
       }
     case "begin":
@@ -205,7 +205,9 @@ export function useChat(options: UseChatOptions) {
     if (!id) return
     const sync = () => {
       const live = getLiveRun(id)
-      if (live && live.token !== ownTurnRef.current) dispatch({ type: "sync", run: live })
+      if (!live || live.token === ownTurnRef.current) return
+      // A failed edit or regenerate: back to the stored transcript, which still has what it replaced.
+      dispatch({ type: "sync", run: live, base: live.restored ? optionsRef.current.initialMessages : undefined })
     }
     const unsubscribe = subscribeLiveRun(id, sync)
     // Catch anything published between the first render and now.
@@ -232,6 +234,9 @@ export function useChat(options: UseChatOptions) {
       let assistantId = context.placeholderId
       let started = false
       let settled = false
+      // The server keeps what an edit or regenerate replaces until the new reply has some text.
+      const replacing = body.action === "edit" || body.action === "regenerate"
+      let gotText = false
       let pending = { text: "", reasoning: "" }
       let streamed = 0
       let frame = 0
@@ -293,6 +298,7 @@ export function useChat(options: UseChatOptions) {
               token,
               user: event.userMessage,
               assistant: { ...context.base, id: event.assistantMessageId, status: "streaming" },
+              removedFromSeq: event.removedFromSeq,
               done: false,
               stop: () => controller.abort(),
             }
@@ -314,6 +320,7 @@ export function useChat(options: UseChatOptions) {
               actions.patchConversation(event.conversationId, { lastMessageAt: now, provider: body.provider, model: body.model })
             }
           } else if (event.type === "text") {
+            if (event.delta.trim()) gotText = true
             pending.text += event.delta
             streamed += event.delta.length
             schedule()
@@ -332,6 +339,11 @@ export function useChat(options: UseChatOptions) {
             flush()
             settled = true
             const failure = event.error
+            if (event.restored) {
+              dispatch({ type: "rollback", messages: context.snapshot, error: failure })
+              publish(() => ({ done: true, restored: true }))
+              continue
+            }
             if (event.message) dispatch({ type: "replace", id: assistantId, message: event.message })
             else dispatch({ type: "fail", id: assistantId, error: failure })
             publish((run) => ({
@@ -356,7 +368,11 @@ export function useChat(options: UseChatOptions) {
           publish((run) => ({ assistant: { ...run.assistant, status: "failed", error: failure }, done: true }))
         }
       } finally {
-        if (!settled) {
+        if (!settled && controller.signal.aborted && replacing && !gotText) {
+          // Stopped before any text: the server keeps the transcript as it was.
+          dispatch({ type: "rollback", messages: context.snapshot, error: null })
+          publish(() => ({ done: true, restored: true }))
+        } else if (!settled) {
           const cancelled = controller.signal.aborted
           dispatch({ type: "settle", id: assistantId, cancelled })
           publish((run) => ({

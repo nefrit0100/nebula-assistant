@@ -13,7 +13,8 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/providers/
   const auth = await authenticate()
   if (auth instanceof Response) return auth
   const { viewer, supabase } = auth
-  if (!(await rateLimit(supabase, "credentials", 20, 60))) return jsonError("nebula_rate_limited", 429)
+  const limited = await rateLimit(supabase, "credentials", 20, 60)
+  if (limited) return limited
 
   let failure: ProviderError | null = null
   try {

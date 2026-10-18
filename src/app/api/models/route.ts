@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   if (auth instanceof Response) return auth
   const { viewer, supabase } = auth
   // Listings are cached per key, but a forced refresh still reaches the providers.
-  if (!(await rateLimit(supabase, "models", 30, 60))) return jsonError("nebula_rate_limited", 429)
+  const limited = await rateLimit(supabase, "models", 30, 60)
+  if (limited) return limited
 
   const only = new URL(request.url).searchParams.get("provider")
   if (only && !isProviderId(only)) return jsonError("not_found", 404, "Unknown provider.")

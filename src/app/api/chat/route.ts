@@ -27,6 +27,12 @@ import type { Json } from "@/lib/supabase/database.types"
 
 export const maxDuration = 300
 
+/**
+ * messages.attachments allows 1,200,000 bytes of jsonb text (see the initial migration).
+ * Kept below that because jsonb's text form adds a space after every ':' and ','.
+ */
+const MAX_ATTACHMENT_BYTES = 1_150_000
+
 const AttachmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
   type: z.string().max(100),
@@ -50,7 +56,16 @@ const BodySchema = z.object({
     .refine((id) => !id.includes(".."), "Invalid model id"),
   action: z.enum(["send", "regenerate", "edit", "continue"]),
   content: z.string().max(LIMITS.message).optional(),
-  attachments: z.array(AttachmentSchema).max(LIMITS.attachmentCount).optional(),
+  attachments: z
+    .array(AttachmentSchema)
+    .max(LIMITS.attachmentCount)
+    .refine(
+      // The per-file limit counts characters; the column limit counts stored bytes, which
+      // multi-byte text and JSON escaping can push past it.
+      (files) => new TextEncoder().encode(JSON.stringify(files)).length <= MAX_ATTACHMENT_BYTES,
+      "Attachments are too large together. Remove a file or attach a shorter one.",
+    )
+    .optional(),
   targetMessageId: z.uuid().optional(),
 })
 
@@ -85,7 +100,8 @@ export async function POST(request: Request) {
     return jsonError("invalid_input", 400, "targetMessageId and conversationId are required for this action.")
   }
 
-  if (!(await rateLimit(supabase, "chat", 30, 60))) return jsonError("nebula_rate_limited", 429)
+  const limited = await rateLimit(supabase, "chat", 30, 60)
+  if (limited) return limited
 
   const provider: ProviderId = body.provider
   let providerContext
@@ -143,39 +159,28 @@ export async function POST(request: Request) {
     if (!target) return jsonError("not_found", 404, "Message not found.")
     const targetMessage = toChatMessage(target)
 
+    // Edit and regenerate replace everything from removedFromSeq on. The replaced messages
+    // stay stored until the new reply is, so a failed or empty attempt never loses them.
     if (body.action === "edit") {
       if (targetMessage.role !== "user") return jsonError("invalid_input", 400, "Only your own messages can be edited.")
       removedFromSeq = target.seq
-      // Save the edited message before dropping what it replaces, so a failed write never
-      // loses the transcript. It gets a newer seq, so it lands where the old one was.
+      // It gets a newer seq, so once the old messages go it lands where the original was.
       userMessage = await insertUserMessage(conversation.id, content, targetMessage.attachments)
       if (!userMessage) return jsonError("unknown", 500, "Could not save your message.")
-      const { error } = await supabase
-        .from("messages")
-        .delete()
-        .eq("conversation_id", conversation.id)
-        .gte("seq", target.seq)
-        .neq("id", userMessage.id)
-      if (error) {
-        await supabase.from("messages").delete().eq("id", userMessage.id)
-        return jsonError("unknown", 500, "Could not update the conversation.")
-      }
     } else if (body.action === "regenerate") {
-      // Regenerating an assistant reply drops it; regenerating from a user message drops what follows.
+      // Regenerating an assistant reply replaces it; regenerating from a user message replaces what follows.
       removedFromSeq = targetMessage.role === "assistant" ? target.seq : target.seq + 1
-      const { error } = await supabase
-        .from("messages")
-        .delete()
-        .eq("conversation_id", conversation.id)
-        .gte("seq", removedFromSeq)
-      if (error) return jsonError("unknown", 500, "Could not update the conversation.")
     } else {
       if (targetMessage.role !== "assistant") return jsonError("invalid_input", 400, "Only replies can be continued.")
       continueTarget = targetMessage
     }
   } else {
     userMessage = await insertUserMessage(conversation.id, content, attachments)
-    if (!userMessage) return jsonError("unknown", 500, "Could not save your message.")
+    if (!userMessage) {
+      // Don't leave an empty conversation behind in the sidebar.
+      if (createdConversation) await supabase.from("conversations").delete().eq("id", conversation.id)
+      return jsonError("unknown", 500, "Could not save your message.")
+    }
   }
 
   async function insertUserMessage(conversationId: string, text: string, files: Attachment[]) {
@@ -193,13 +198,10 @@ export async function POST(request: Request) {
   }
 
   // ── Context: history, personalization, project ────────────────────────────
+  let historyQuery = supabase.from("messages").select(MESSAGE_COLUMNS).eq("conversation_id", conversation.id)
+  if (removedFromSeq !== null) historyQuery = historyQuery.lt("seq", removedFromSeq)
   const [historyResult, settingsResult, projectResult] = await Promise.all([
-    supabase
-      .from("messages")
-      .select(MESSAGE_COLUMNS)
-      .eq("conversation_id", conversation.id)
-      .order("seq", { ascending: false })
-      .limit(HISTORY_LIMIT),
+    historyQuery.order("seq", { ascending: false }).limit(HISTORY_LIMIT),
     supabase
       .from("user_settings")
       .select("nickname, about_me, response_style, custom_instructions, show_reasoning")
@@ -211,6 +213,8 @@ export async function POST(request: Request) {
   ])
 
   const history = (historyResult.data ?? []).map(toChatMessage).reverse()
+  // The edited message sorts after the ones it replaces, so the filter above left it out.
+  if (body.action === "edit" && userMessage) history.push(userMessage)
   if (continueTarget) {
     // Only include the transcript up to the reply being continued.
     const cut = history.findIndex((message) => message.id === continueTarget!.id)
@@ -248,7 +252,8 @@ export async function POST(request: Request) {
       abort.abort()
     }, IDLE_TIMEOUT_MS)
   }
-  request.signal.addEventListener("abort", () => abort.abort(), { once: true })
+  if (request.signal.aborted) abort.abort()
+  else request.signal.addEventListener("abort", () => abort.abort(), { once: true })
 
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
   const writer = writable.getWriter()
@@ -341,20 +346,50 @@ export async function POST(request: Request) {
       error: errorPayload as Json,
     }
 
-    const persisted = continueTarget
-      ? await supabase.from("messages").update(row).eq("id", continueTarget.id).select(MESSAGE_COLUMNS).single()
-      : await supabase
-          .from("messages")
-          .insert({ ...row, id: assistantMessageId, conversation_id: conversation.id, role: "assistant" })
-          .select(MESSAGE_COLUMNS)
-          .single()
+    // An edit or regenerate takes over once it has something to show: a finished reply, or
+    // a partial one the person stopped. A failed or empty attempt leaves the transcript as it was.
+    const replacedFrom = removedFromSeq
+    const replaces = status === "complete" || (status === "cancelled" && text.trim() !== "")
 
-    const message = persisted.data ? toChatMessage(persisted.data) : null
-    if (persisted.error) {
-      console.error("[chat] failed to persist assistant message", persisted.error.code)
+    let message: ChatMessage | null = null
+    if (replacedFrom === null || replaces) {
+      const persisted = continueTarget
+        ? await supabase.from("messages").update(row).eq("id", continueTarget.id).select(MESSAGE_COLUMNS).single()
+        : await supabase
+            .from("messages")
+            .insert({ ...row, id: assistantMessageId, conversation_id: conversation.id, role: "assistant" })
+            .select(MESSAGE_COLUMNS)
+            .single()
+      message = persisted.data ? toChatMessage(persisted.data) : null
+      if (persisted.error) {
+        console.error("[chat] failed to persist assistant message", persisted.error.code)
+      }
     }
 
-    if (failure) await send({ type: "error", error: errorPayload!, message })
+    let restored = false
+    if (replacedFrom !== null) {
+      if (message) {
+        const kept = [message.id, userMessage?.id].filter(Boolean).join(",")
+        const { error } = await supabase
+          .from("messages")
+          .delete()
+          .eq("conversation_id", conversation.id)
+          .gte("seq", replacedFrom)
+          .not("id", "in", `(${kept})`)
+        if (error) console.error("[chat] failed to remove replaced messages", error.code)
+      } else {
+        if (body.action === "edit" && userMessage) await supabase.from("messages").delete().eq("id", userMessage.id)
+        restored = true
+      }
+    }
+
+    if (restored) {
+      // A stop before any text means the client has gone; there's no one to tell.
+      if (status !== "cancelled") {
+        const error = errorPayload ?? toApiError("unknown", "The reply could not be saved.")
+        await send({ type: "error", error, message: null, restored: true })
+      }
+    } else if (failure) await send({ type: "error", error: errorPayload!, message })
     else if (message) await send({ type: "done", message })
     else await send({ type: "error", error: toApiError("unknown", "The reply could not be saved."), message: null })
 

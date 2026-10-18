@@ -47,18 +47,27 @@ export async function parseBody<S extends z.ZodType>(request: Request, schema: S
 /** Buckets consume_rate_limit accepts; keep in sync with its allowlist in the migrations. */
 type RateLimitBucket = "chat" | "credentials" | "models"
 
-/** Fixed-window limiter backed by the consume_rate_limit RPC. Fails open on DB errors. */
+/**
+ * Fixed-window limiter backed by the consume_rate_limit RPC. Returns the response to send
+ * when the request may not go ahead, or null when it may. If the limiter itself fails,
+ * model listing still goes ahead, but chat and credential checks (long-lived streams and
+ * outbound calls) are refused rather than left unthrottled.
+ */
 export async function rateLimit(
   supabase: SupabaseClient<Database>,
   bucket: RateLimitBucket,
   max: number,
   windowSeconds: number,
-): Promise<boolean> {
+): Promise<Response | null> {
   const { data, error } = await supabase.rpc("consume_rate_limit", {
     p_bucket: bucket,
     p_max: max,
     p_window_seconds: windowSeconds,
   })
-  if (error) return true
-  return data?.[0]?.allowed ?? true
+  const result = data?.[0]
+  if (error || !result) {
+    console.error("[rate-limit] consume_rate_limit failed", bucket, error?.code ?? "no row")
+    return bucket === "models" ? null : jsonError("unknown", 503, "Couldn't check the request rate. Try again in a moment.")
+  }
+  return result.allowed ? null : jsonError("nebula_rate_limited", 429)
 }

@@ -19,7 +19,11 @@ export type LiveRun = {
   user: ChatMessage | null
   /** The reply so far, or its final form once settled. */
   assistant: ChatMessage
+  /** Stored messages this edit or regenerate replaces, from this seq on. */
+  removedFromSeq: number | null
   done: boolean
+  /** The edit or regenerate failed and the stored transcript was left as it was. */
+  restored?: boolean
   stop: () => void
 }
 
@@ -58,12 +62,20 @@ export function subscribeLiveRun(conversationId: string, listener: () => void): 
 }
 
 /**
- * Folds a turn into a message list: the user's message is added if missing and the
- * reply replaces its own entry (a continued reply keeps its id) or is appended.
- * A settled reply never overwrites a version the server already returned.
+ * Folds a turn into a message list: messages it replaces are dropped, the user's
+ * message is added if missing and the reply replaces its own entry (a continued
+ * reply keeps its id) or is appended. A settled reply never overwrites a version
+ * the server already returned. A restored turn changed nothing.
  */
 export function mergeLiveRun(messages: ChatMessage[], run: LiveRun): ChatMessage[] {
+  if (run.restored) return messages
   let next = messages
+  if (run.removedFromSeq !== null) {
+    const from = run.removedFromSeq
+    next = next.filter(
+      (message) => message.seq === null || message.seq < from || message.id === run.user?.id || message.id === run.assistant.id,
+    )
+  }
   if (run.user && !next.some((message) => message.id === run.user!.id)) next = [...next, run.user]
   const index = next.findIndex((message) => message.id === run.assistant.id)
   if (index === -1) return [...next, run.assistant]

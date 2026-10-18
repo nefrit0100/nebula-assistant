@@ -40,7 +40,12 @@ export function normalizeProviderError(error: unknown, secret?: string): Provide
     return new AbortedError()
   }
 
-  if (error instanceof OpenAI.APIConnectionTimeoutError || error instanceof Anthropic.APIConnectionTimeoutError) {
+  if (
+    error instanceof OpenAI.APIConnectionTimeoutError ||
+    error instanceof Anthropic.APIConnectionTimeoutError ||
+    // What fetch rejects with when an AbortSignal.timeout() fires.
+    (error instanceof Error && error.name === "TimeoutError")
+  ) {
     return new ProviderError("timeout", "The request timed out before the provider responded.")
   }
   if (error instanceof OpenAI.APIConnectionError || error instanceof Anthropic.APIConnectionError) {

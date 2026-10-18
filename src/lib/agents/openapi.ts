@@ -424,7 +424,11 @@ export function openApiDocument(siteUrl = publicEnv.siteUrl) {
                 createdConversation: { type: "boolean" },
                 userMessage: { oneOf: [ref("ChatMessage"), { type: "null" }] },
                 assistantMessageId: { type: "string", format: "uuid" },
-                removedFromSeq: { type: ["integer", "null"] },
+                removedFromSeq: {
+                  type: ["integer", "null"],
+                  description:
+                    "Messages from this seq on are replaced by an edit or regenerate. They are deleted once the new reply is saved, and kept if it fails.",
+                },
               },
             },
             {
@@ -444,6 +448,10 @@ export function openApiDocument(siteUrl = publicEnv.siteUrl) {
                 type: { const: "error" },
                 error: ref("ApiError"),
                 message: { oneOf: [ref("ChatMessage"), { type: "null" }] },
+                restored: {
+                  type: "boolean",
+                  description: "True when an edit or regenerate failed and the conversation was left unchanged.",
+                },
               },
             },
           ],

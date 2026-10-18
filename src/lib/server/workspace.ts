@@ -25,6 +25,7 @@ export const loadWorkspace = cache(async (): Promise<WorkspaceSnapshot> => {
       .from("conversations")
       .select(CONVERSATION_COLUMNS)
       .order("last_message_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(CONVERSATION_PAGE_SIZE + 1),
     supabase.from("projects").select("*").order("updated_at", { ascending: false }),
     listConnections(supabase),

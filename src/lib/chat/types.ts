@@ -49,13 +49,22 @@ export type ChatStreamEvent =
       createdConversation: boolean
       userMessage: ChatMessage | null
       assistantMessageId: string
-      /** Messages removed by an edit or regenerate, so other views can drop them. */
+      /**
+       * Messages an edit or regenerate replaces, so other views can drop them. They are
+       * deleted once the new reply is stored, and kept if it fails (see `restored`).
+       */
       removedFromSeq: number | null
     }
   | { type: "text"; delta: string }
   | { type: "reasoning"; delta: string }
   | { type: "done"; message: ChatMessage }
-  | { type: "error"; error: ApiErrorPayload; message: ChatMessage | null }
+  | {
+      type: "error"
+      error: ApiErrorPayload
+      message: ChatMessage | null
+      /** An edit or regenerate failed and nothing was changed: the replaced messages are kept. */
+      restored?: boolean
+    }
 
 export const MESSAGE_COLUMNS =
   "id, role, content, reasoning, attachments, status, provider_id, model_id, finish_reason, usage, error, feedback, seq, created_at" as const

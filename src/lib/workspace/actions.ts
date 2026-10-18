@@ -22,7 +22,8 @@ function setCookie(name: string, value: string) {
 }
 
 function sortConversations(list: ConversationSummary[]) {
-  return [...list].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+  // Newest first, ties by id: the same order as the queries below, which page by both.
+  return [...list].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
 }
 
 function failed(message: string) {
@@ -129,6 +130,7 @@ export function createWorkspaceActions(store: Store<WorkspaceState>) {
         .from("conversations")
         .select(CONVERSATION_COLUMNS)
         .order("last_message_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(CONVERSATION_PAGE_SIZE + 1))
       if (error || !data) return
       store.set({
@@ -144,8 +146,11 @@ export function createWorkspaceActions(store: Store<WorkspaceState>) {
       const { data, error } = await query((supabase) => supabase
         .from("conversations")
         .select(CONVERSATION_COLUMNS)
-        .lt("last_message_at", oldest.lastMessageAt)
+        // Strictly after the last one shown in (last_message_at, id) order: several conversations
+        // can share a timestamp, and a cursor on the timestamp alone would skip some of them.
+        .or(`last_message_at.lt."${oldest.lastMessageAt}",and(last_message_at.eq."${oldest.lastMessageAt}",id.lt.${oldest.id})`)
         .order("last_message_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(CONVERSATION_PAGE_SIZE + 1))
       if (error || !data) return failed("Couldn't load older conversations")
       const known = new Set(current.map((conversation) => conversation.id))
